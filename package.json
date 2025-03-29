@@ -1,0 +1,19 @@
+{
+  "name": "sehat",
+  "version": "1.0.0",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node --env-file=.env server.js",
+    "dev": "node --env-file=.env --watch server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "description": "",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "mssql": "^11.0.1"
+  }
+}
