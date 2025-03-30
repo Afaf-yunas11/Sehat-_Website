@@ -8,6 +8,7 @@ import path from "path";
 
 /* ROUTE IMPORTS */
 import userRoutes from "./src/routes/userRoutes.js";
+import authRoutes from "./src/routes/authRoutes.js";
 
 const app = express();
 const __filename = url.fileURLToPath(import.meta.url);
@@ -17,7 +18,10 @@ const PORT = process.env.PORT;
 /* MIDDLEWARE */
 app.use(cors());
 app.use(express.json());
+
+/* ROUTER MOUNTS */
 app.use("/api/users", userRoutes);
+app.use("/api/auth", authRoutes);
 
 /* SERVE STATIC FILES */
 app.use(express.static(path.join(__dirname, "public")));
