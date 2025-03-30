@@ -1,6 +1,7 @@
 import express from "express";
 import sql from "mssql";
 import cors from "cors";
+import cookieParser from "cookie-parser";
 
 /* FILE-SYSTEM IMPORTS */
 import url from "url";
@@ -18,6 +19,7 @@ const PORT = process.env.PORT;
 /* MIDDLEWARE */
 app.use(cors());
 app.use(express.json());
+app.use(cookieParser());
 
 /* ROUTER MOUNTS */
 app.use("/api/users", userRoutes);

@@ -1,3 +1,5 @@
+import sql from 'mssql';
+
 export const userTables = Object.freeze({
   patient: "PATIENTS",
   doctor: "DOCTORS",

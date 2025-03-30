@@ -1,6 +1,7 @@
 import express from "express";
 import sql from "mssql";
 import jwt from "jsonwebtoken";
+import cookieParser from "cookie-parser";
 
 import sha256 from "../scripts/sha256.js";
 import validateEmail from "../scripts/validateEmail.js";
@@ -55,10 +56,19 @@ router.post("/login", async (req, res) => {
     const token = jwt.sign(
       { userId: user.USER_ID, email: user.EMAIL, loginType: loginType },
       process.env.JWT_SECRET,
-      { expiresIn: "10m" }
+      { expiresIn: "1h" }
     );
 
-    res.status(200).json({ message: "LOGIN SUCCESSFUL", token: token });
+    res.cookie("token", token, 
+    {
+      domain:'localhost',
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "Strict",
+      maxAge: 3600 * 1000,
+    });
+
+    res.status(200).json({ message: "LOGIN SUCCESSFUL" });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

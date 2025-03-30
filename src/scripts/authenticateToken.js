@@ -1,13 +1,9 @@
 import jwt from "jsonwebtoken";
 
 function authenticateToken(req, res, next) {
-  const authHeader = req.headers["authorization"];
-  if (!authHeader) {
-    return res.status(401).json({ error: "TOKEN REQUIRED" });
-  }
-
-  const token = authHeader.split(" ")[1];
+  const token = req.cookies.token;
   if (!token) {
+    console.log(token);
     return res.status(401).json({ error: "INVALID TOKEN FORMAT" });
   }
 
