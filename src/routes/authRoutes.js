@@ -1,7 +1,6 @@
 import express from "express";
 import sql from "mssql";
 import jwt from "jsonwebtoken";
-import cookieParser from "cookie-parser";
 
 import sha256 from "../scripts/sha256.js";
 import validateEmail from "../scripts/validateEmail.js";

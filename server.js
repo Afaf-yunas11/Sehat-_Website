@@ -10,6 +10,7 @@ import path from "path";
 /* ROUTE IMPORTS */
 import userRoutes from "./src/routes/userRoutes.js";
 import authRoutes from "./src/routes/authRoutes.js";
+import patientRoutes from "./src/routes/patientRoutes.js";
 
 const app = express();
 const __filename = url.fileURLToPath(import.meta.url);
@@ -24,6 +25,7 @@ app.use(cookieParser());
 /* ROUTER MOUNTS */
 app.use("/api/users", userRoutes);
 app.use("/api/auth", authRoutes);
+app.use("/api/patients", patientRoutes);
 
 /* SERVE STATIC FILES */
 app.use(express.static(path.join(__dirname, "public")));

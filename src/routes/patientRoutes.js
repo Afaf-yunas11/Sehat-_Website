@@ -2,9 +2,6 @@ import express from "express";
 import sql from "mssql";
 import { userTables } from "../config/userTables.js";
 
-import sha256 from "../scripts/sha256.js";
-import validateEmail from "../scripts/validateEmail.js";
-import validatePassword from "../scripts/validatePassword.js";
 import authenticateToken from "../scripts/authenticateToken.js";
 import validateRequestBody from "../scripts/validateRequestBody.js";
 import fetchColumnTypes from "../scripts/fetchColumnTypes.js";
@@ -16,15 +13,22 @@ const config = JSON.parse(process.env.CONFIG);
 
 router.get("/", authenticateToken, async (req, res) => {
   try {
-    if (authorizeUser(req, res, [userTables.admin], false)) {
+    if (
+      !authorizeUser(
+        req,
+        res,
+        [userTables.admin, userTables.doctor, userTables.rescueWorker],
+        false
+      )
+    ) {
       return res.status(403).json({ error: "FORBIDDEN" });
     }
 
     const pool = await sql.connect(config);
     const result = await pool.request().query(
       `
-      SELECT USER_ID, F_NAME, L_NAME, CONVERT(VARCHAR, DOB, 103) AS DOB, GENDER, ACCOUNT_STATUS
-      FROM USERS;
+      SELECT U.USER_ID, PATIENT_ID, F_NAME, L_NAME, ACCOUNT_STATUS, GENDER, BLOOD_GROUP, WEIGHT, HEIGHT, ADDRESS FROM USERS AS U
+      INNER JOIN PATIENTS AS P ON U.USER_ID = P.USER_ID
       `
     );
     res.status(200).json(result.recordset);
@@ -33,11 +37,18 @@ router.get("/", authenticateToken, async (req, res) => {
   }
 });
 
-router.get("/:id", authenticateToken, async (req, res) => {
+router.get("/by-user/:id", authenticateToken, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
 
-    if (authorizeUser(req, res, [userTables.admin], true)) {
+    if (
+      !authorizeUser(
+        req,
+        res,
+        [userTables.admin, userTables.doctor, userTables.rescueWorker],
+        true
+      )
+    ) {
       return res.status(403).json({ error: "FORBIDDEN" });
     }
 
@@ -48,16 +59,17 @@ router.get("/:id", authenticateToken, async (req, res) => {
 
     const result = await pool
       .request()
-      .input("userID", sql.Int, id)
+      .input("USER_ID", sql.Int, id)
       .query(
         `
-      SELECT USER_ID, F_NAME, L_NAME, CONVERT(VARCHAR, DOB, 103) AS DOB, GENDER, ACCOUNT_STATUS
-      FROM USERS WHERE USER_ID = @userID;
+      SELECT U.USER_ID, PATIENT_ID, F_NAME, L_NAME, ACCOUNT_STATUS, GENDER, BLOOD_GROUP, WEIGHT, HEIGHT, ADDRESS FROM USERS AS U
+      INNER JOIN PATIENTS AS P ON U.USER_ID = P.USER_ID
+      WHERE P.USER_ID = @USER_ID
       `
       );
 
     if (result.recordset.length === 0)
-      return res.status(404).json({ error: "USER NOT FOUND" });
+      return res.status(404).json({ error: "PATIENT NOT FOUND" });
 
     res.status(200).json(result.recordset);
   } catch (error) {
@@ -67,67 +79,73 @@ router.get("/:id", authenticateToken, async (req, res) => {
 
 router.post("/", async (req, res) => {
   try {
-    let { F_NAME, L_NAME, EMAIL, PASSWORD, DOB, GENDER } = req.body;
-    const columnNames = await fetchColumnNames("USERS");
+    let { USER_ID, BLOOD_GROUP, WEIGHT, HEIGHT, ADDRESS } = req.body;
+    USER_ID = parseInt(USER_ID);
+    WEIGHT = parseInt(WEIGHT);
+    HEIGHT = parseInt(HEIGHT);
+
+    const columnNames = await fetchColumnNames("PATIENTS");
+
+    if (
+      !authorizeUser(req, res, [userTables.admin, userTables.patient], false)
+    ) {
+      return res.status(403).json({ error: "FORBIDDEN" });
+    }
 
     if (!validateRequestBody(req.body, columnNames)) {
       return res.status(400).json({ error: "INVALID REQUEST BODY" });
     }
-    if (!(F_NAME && L_NAME && EMAIL && PASSWORD && DOB && GENDER)) {
+    if (!(USER_ID && BLOOD_GROUP && WEIGHT && HEIGHT && ADDRESS)) {
       return res.status(400).json({ error: "ALL FIELDS ARE REQUIRED" });
     }
-    if (!validateEmail(EMAIL)) {
-      return res.status(400).json({ error: "INVALID EMAIL" });
-    }
-    if (!validatePassword(PASSWORD)) {
-      return res.status(400).json({ error: "INVALID PASSWORD" });
+    if (HEIGHT <= 0 || WEIGHT <= 0 || !HEIGHT || !WEIGHT || !USER_ID) {
+      return res.status(400).json({ error: "BAD REQUEST" });
     }
 
-    GENDER = GENDER.toLowerCase();
-    PASSWORD = sha256(PASSWORD);
     const pool = await sql.connect(config);
     const result = await pool
       .request()
-      .input("F_NAME", sql.VarChar(100), F_NAME)
-      .input("L_NAME", sql.VarChar(100), L_NAME)
-      .input("EMAIL", sql.VarChar(100), EMAIL)
-      .input("PASSWORD", sql.VarChar(100), PASSWORD)
-      .input("DOB", sql.Date, DOB)
-      .input("GENDER", sql.VarChar(6), GENDER)
+      .input("USER_ID", sql.Int, USER_ID)
+      .input("BLOOD_GROUP", sql.VarChar(3), BLOOD_GROUP)
+      .input("WEIGHT", sql.Int, WEIGHT)
+      .input("HEIGHT", sql.Int, HEIGHT)
+      .input("ADDRESS", sql.VarChar(sql.MAX), ADDRESS)
       .query(
         `
-        INSERT INTO USERS (F_NAME, L_NAME, EMAIL, PASSWORD, DOB, GENDER)
-        VALUES
-        (@F_NAME, @L_NAME, @EMAIL, @PASSWORD, @DOB, @GENDER);
-        `
+      INSERT INTO PATIENTS (USER_ID, BLOOD_GROUP, WEIGHT, HEIGHT, ADDRESS)
+      VALUES 
+      (@USER_ID, @BLOOD_GROUP, @WEIGHT, @HEIGHT, @ADDRESS)
+      `
       );
 
     const userIDResult = await pool
       .request()
-      .input("EMAIL", sql.VarChar(100), EMAIL)
+      .input("USER_ID", sql.Int, USER_ID)
       .query(
         `
-        SELECT USER_ID FROM USERS 
-        WHERE LOWER(EMAIL) = LOWER(@EMAIL);
+        SELECT PATIENT_ID FROM PATIENTS AS P
+        WHERE P.USER_ID = @USER_ID;
         `
       );
 
     res.status(201).json({
-      message: "USER ADDED SUCCESSFULLY",
-      userID: userIDResult.recordset[0].USER_ID,
+      message: "PATIENT ADDED SUCCESSFULLY",
+      userId: USER_ID,
+      patientId: userIDResult.recordset[0].PATIENT_ID,
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-router.delete("/:id", authenticateToken, async (req, res) => {
+router.delete("/by-user/:id", authenticateToken, async (req, res) => {
   try {
-    if (authorizeUser(req, res, [userTables.admin], true)) {
+    const id = parseInt(req.params.id);
+
+    if (!authorizeUser(req, res, [userTables.admin], true)) {
       return res.status(403).json({ error: "FORBIDDEN" });
     }
 
-    const id = parseInt(req.params.id);
     if (isNaN(id)) {
       return res.status(400).json({ error: "INVALID USER ID" });
     }
@@ -136,25 +154,28 @@ router.delete("/:id", authenticateToken, async (req, res) => {
     const result = await pool
       .request()
       .input("USER_ID", sql.Int, id)
-      .query(`DELETE FROM USERS WHERE USER_ID = @USER_ID`);
+      .query(`DELETE FROM PATIENTS WHERE USER_ID = @USER_ID`);
 
     if (result.rowsAffected[0] === 0) {
-      return res.status(404).json({ error: `USER ${id} NOT FOUND` });
+      return res
+        .status(404)
+        .json({ error: `PATIENT WITH USER ID ${id} NOT FOUND` });
     }
-    res.status(200).json({ message: `USER ${id} DELETED SUCCESSFULLY` });
+    res
+      .status(200)
+      .json({ message: `PATIENT WITH USER ID ${id} DELETED SUCCESSFULLY` });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-router.patch("/:id", authenticateToken, async (req, res) => {
+router.patch("/by-user/:id", authenticateToken, async (req, res) => {
   const id = parseInt(req.params.id);
-  const clientID = parseInt(req.user.userId);
   const updates = req.body;
-  const columnTypes = await fetchColumnTypes("USERS");
-  const columnNames = await fetchColumnNames("USERS");
+  const columnTypes = await fetchColumnTypes("PATIENTS");
+  const columnNames = await fetchColumnNames("PATIENTS");
 
-  if (authorizeUser(req, res, [userTables.admin], true)) {
+  if (!authorizeUser(req, res, [userTables.admin], true)) {
     return res.status(403).json({ error: "FORBIDDEN" });
   }
 
@@ -170,31 +191,31 @@ router.patch("/:id", authenticateToken, async (req, res) => {
   const pool = await sql.connect(config);
   const request = pool.request();
 
-  request.input("USER_ID", sql.Int, id);
   for (let field in updates) {
-    if (field === "PASSWORD") {
-      updates[field] = sha256(updates[field]);
+    if (field === "USER_ID") {
+      return res.status(403).json({ error: "FORBIDDEN" });
     }
-    if (field === "GENDER" || field === "ACCOUNT_STATUS") {
-      updates[field] = updates[field].toLowerCase();
+    if (field === "BLOOD_GROUP") {
+      updates[field] = updates[field].toUpperCase();
     }
-
     request.input(field, columnTypes[field], updates[field]);
     updateFields.push(`${field} = @${field}`);
   }
+  request.input("USER_ID", sql.Int, id);
 
-  const query = `UPDATE USERS SET ${updateFields.join(
+  const query = `UPDATE PATIENTS SET ${updateFields.join(
     ", "
   )} WHERE USER_ID = @USER_ID`;
 
   try {
     const result = await request.query(query);
-
     if (result.rowsAffected[0] === 0) {
       return res.status(404).json({ error: "USER NOT FOUND" });
     }
 
-    res.status(200).json({ message: `USER ${id} UPDATED SUCCESSFULLY` });
+    res
+      .status(200)
+      .json({ message: `PATIENT WITH USER ID ${id} UPDATED SUCCESSFULLY` });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
