@@ -1,6 +1,8 @@
-import express from "express";
-import sql from "mssql";
-import cors from "cors";
+/* importing packages */
+
+import express from "express";   //to build server
+import sql from "mssql";        //package that allows sql functions
+import cors from "cors";       //a middleware to cross-check ports
 import cookieParser from "cookie-parser";
 
 /* FILE-SYSTEM IMPORTS */

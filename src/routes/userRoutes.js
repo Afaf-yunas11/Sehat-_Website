@@ -14,12 +14,8 @@ import authorizeUser from "../scripts/authorizeUser.js";
 const router = express.Router();
 const config = JSON.parse(process.env.CONFIG);
 
-router.get("/", authenticateToken, async (req, res) => {
+router.get("/", authenticateToken, authorizeUser(req, res, [userTables.admin], false), async (req, res) => {
   try {
-    if (authorizeUser(req, res, [userTables.admin], false)) {
-      return res.status(403).json({ error: "FORBIDDEN" });
-    }
-
     const pool = await sql.connect(config);
     const result = await pool.request().query(
       `

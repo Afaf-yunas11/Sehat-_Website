@@ -2,6 +2,8 @@ import express from "express";
 import sql from "mssql";
 import jwt from "jsonwebtoken";
 
+/*IMPORTING MIDDLEWARE BEFORE ROUTES*/
+
 import sha256 from "../scripts/sha256.js";
 import validateEmail from "../scripts/validateEmail.js";
 import { allowedTables } from "../config/userTables.js";
@@ -58,14 +60,14 @@ router.post("/login", async (req, res) => {
       { expiresIn: "1h" }
     );
 
-    res.cookie("token", token, 
-    {
-      domain:'localhost',
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "Strict",
-      maxAge: 3600 * 1000,
-    });
+    res.cookie("token", token,
+      {
+        domain: 'localhost',
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "Strict",
+        maxAge: 3600 * 1000,
+      });
 
     res.status(200).json({ message: "LOGIN SUCCESSFUL" });
   } catch (error) {
