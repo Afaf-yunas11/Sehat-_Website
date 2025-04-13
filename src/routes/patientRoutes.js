@@ -11,19 +11,8 @@ import authorizeUser from "../scripts/authorizeUser.js";
 const router = express.Router();
 const config = JSON.parse(process.env.CONFIG);
 
-router.get("/", authenticateToken, async (req, res) => {
+router.get("/", authenticateToken, authorizeUser([userTables.admin, userTables.doctor, userTables.rescueWorker], false), async (req, res) => {
   try {
-    if (
-      !authorizeUser(
-        req,
-        res,
-        [userTables.admin, userTables.doctor, userTables.rescueWorker],
-        false
-      )
-    ) {
-      return res.status(403).json({ error: "FORBIDDEN" });
-    }
-
     const pool = await sql.connect(config);
     const result = await pool.request().query(
       `
@@ -37,21 +26,9 @@ router.get("/", authenticateToken, async (req, res) => {
   }
 });
 
-router.get("/by-user/:id", authenticateToken, async (req, res) => {
+router.get("/by-user/:id", authorizeUser([userTables.admin, userTables.doctor, userTables.rescueWorker], true), async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-
-    if (
-      !authorizeUser(
-        req,
-        res,
-        [userTables.admin, userTables.doctor, userTables.rescueWorker],
-        true
-      )
-    ) {
-      return res.status(403).json({ error: "FORBIDDEN" });
-    }
-
     const pool = await sql.connect(config);
     if (isNaN(id)) {
       return res.status(400).json({ error: "INVALID USER ID" });
@@ -138,13 +115,9 @@ router.post("/", async (req, res) => {
   }
 });
 
-router.delete("/by-user/:id", authenticateToken, async (req, res) => {
+router.delete("/by-user/:id", authenticateToken, authorizeUser([userTables.admin], true), async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-
-    if (!authorizeUser(req, res, [userTables.admin], true)) {
-      return res.status(403).json({ error: "FORBIDDEN" });
-    }
 
     if (isNaN(id)) {
       return res.status(400).json({ error: "INVALID USER ID" });
@@ -169,15 +142,11 @@ router.delete("/by-user/:id", authenticateToken, async (req, res) => {
   }
 });
 
-router.patch("/by-user/:id", authenticateToken, async (req, res) => {
+router.patch("/by-user/:id", authenticateToken, authorizeUser([userTables.admin], true), async (req, res) => {
   const id = parseInt(req.params.id);
   const updates = req.body;
   const columnTypes = await fetchColumnTypes("PATIENTS");
   const columnNames = await fetchColumnNames("PATIENTS");
-
-  if (!authorizeUser(req, res, [userTables.admin], true)) {
-    return res.status(403).json({ error: "FORBIDDEN" });
-  }
 
   if (Object.keys(updates).length === 0) {
     return res.status(400).json({ error: "NO FIELDS TO UPDATE" });

@@ -33,14 +33,9 @@ router.get("/", authenticateToken, async (req, res) => {
   }
 });
 
-router.get("/:id", authenticateToken, async (req, res) => {
+router.get("/:id", authenticateToken, authorizeUser([userTables.admin], true), async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-
-    if (authorizeUser(req, res, [userTables.admin], true)) {
-      return res.status(403).json({ error: "FORBIDDEN" });
-    }
-
     const pool = await sql.connect(config);
     if (isNaN(id)) {
       return res.status(400).json({ error: "INVALID USER ID" });
@@ -121,12 +116,8 @@ router.post("/", async (req, res) => {
   }
 });
 
-router.delete("/:id", authenticateToken, async (req, res) => {
+router.delete("/:id", authenticateToken, authorizeUser([userTables.admin], true), async (req, res) => {
   try {
-    if (authorizeUser(req, res, [userTables.admin], true)) {
-      return res.status(403).json({ error: "FORBIDDEN" });
-    }
-
     const id = parseInt(req.params.id);
     if (isNaN(id)) {
       return res.status(400).json({ error: "INVALID USER ID" });
@@ -147,16 +138,12 @@ router.delete("/:id", authenticateToken, async (req, res) => {
   }
 });
 
-router.patch("/:id", authenticateToken, async (req, res) => {
+router.patch("/:id", authenticateToken, authorizeUser(req, res, [userTables.admin], true), async (req, res) => {
   const id = parseInt(req.params.id);
   const clientID = parseInt(req.user.userId);
   const updates = req.body;
   const columnTypes = await fetchColumnTypes("USERS");
   const columnNames = await fetchColumnNames("USERS");
-
-  if (authorizeUser(req, res, [userTables.admin], true)) {
-    return res.status(403).json({ error: "FORBIDDEN" });
-  }
 
   if (Object.keys(updates).length === 0) {
     return res.status(400).json({ error: "NO FIELDS TO UPDATE" });

@@ -3,7 +3,6 @@ import jwt from "jsonwebtoken";
 function authenticateToken(req, res, next) {
   const token = req.cookies.token;
   if (!token) {
-    console.log(token);
     return res.status(401).json({ error: "INVALID TOKEN FORMAT" });
   }
 
