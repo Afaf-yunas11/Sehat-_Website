@@ -54,7 +54,7 @@ router.get("/by-user/:id", authorizeUser([userTables.admin, userTables.doctor, u
   }
 });
 
-router.post("/", async (req, res) => {
+router.post("/", authorizeUser([userTables.admin, userTables.patient], false), async (req, res) => {
   try {
     let { USER_ID, BLOOD_GROUP, WEIGHT, HEIGHT, ADDRESS } = req.body;
     USER_ID = parseInt(USER_ID);
@@ -62,12 +62,6 @@ router.post("/", async (req, res) => {
     HEIGHT = parseInt(HEIGHT);
 
     const columnNames = await fetchColumnNames("PATIENTS");
-
-    if (
-      !authorizeUser(req, res, [userTables.admin, userTables.patient], false)
-    ) {
-      return res.status(403).json({ error: "FORBIDDEN" });
-    }
 
     if (!validateRequestBody(req.body, columnNames)) {
       return res.status(400).json({ error: "INVALID REQUEST BODY" });
