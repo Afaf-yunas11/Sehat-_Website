@@ -19,7 +19,14 @@ import authRoutes from "./src/routes/authRoutes.js";
 import patientRoutes from "./src/routes/patientRoutes.js";
 import rescueWorkerRoutes from "./src/routes/rescueWorkerRoutes.js";
 import hospitalRoutes from "./src/routes/hospitalRoutes.js";
+import doctorRoutes from "./src/routes/doctorRoutes.js";
+import procedureRoutes from "./src/routes/patientRoutes.js"
+import procedureAssignmentRoutes from "./src/routes/procedureAssignmentRoutes.js";
+import bookingRoutes from "./src/routes/bookingRoutes.js";
+import branchRoutes from "./src/routes/branchRoutes.js";
 import transactionRoutes from "./src/routes/transactionRoutes.js";
+import roomRoutes from "./src/routes/roomRoutes.js";
+
 
 const app = express();
 const __filename = url.fileURLToPath(import.meta.url);
@@ -37,7 +44,14 @@ app.use("/api/auth", authRoutes);
 app.use("/api/patients", patientRoutes);
 app.use("/api/rescue-workers", rescueWorkerRoutes);
 app.use("/api/hospitals", hospitalRoutes);
+app.use("/api/doctors",doctorRoutes);
+app.use("/api/bookings", bookingRoutes);
+app.use("/api/procedures", procedureRoutes);
+app.use("/api/procedure-assingment",procedureAssignmentRoutes);
+app.use("/api/branch",branchRoutes);
 app.use("/api/transactions", transactionRoutes);
+app.use("/api/rooms", roomRoutes);
+
 
 /* SERVE STATIC FILES */
 app.use(express.static(path.join(__dirname, "public")));

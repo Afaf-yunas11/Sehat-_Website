@@ -69,37 +69,30 @@ router.get("/by-user/:id", authorizeUser([userTables.admin], true), async (req, 
       .query(
         `
       SELECT 
-        B.BOOKING_ID, 
-        B.BOOKING_DATE, 
-        B.BOOKING_TIME, 
-        B.DURATION_OF_STAY, 
-        B.BOOKING_STATUS, 
-        B.PATIENT_ID, 
-        U.USER_ID AS PATIENT_USER_ID, 
-        B.LICENSE_NO, 
-        U2.USER_ID AS DOCTOR_USER_ID, 
-        U2.F_NAME AS DOCTOR_F_NAME, 
-        U2.L_NAME DOCTOR_L_NAME, 
-        PR.PROCEDURE_NAME, 
-        PR.PROCEDURE_DURATION,
-        BR.BRANCH_ID,
-        BR.[LOCATION] AS BRANCH_LOCATION,
-        BR.PHONE_NO,
-        BR.LATITUDE,
-        BR.LONGITUDE,
-        H.HOSPITAL_NAME,
-        RO.ROOM_ID,
-        RO.ROOM_TYPE
-      FROM BOOKINGS AS B
-      INNER JOIN PROCEDURES AS PR ON PR.PROCEDURE_ID = B.PROCEDURE_ID
-      INNER JOIN PATIENTS AS PA ON PA.PATIENT_ID = B.PATIENT_ID
-      INNER JOIN USERS AS U ON U.USER_ID = PA.USER_ID
-      INNER JOIN DOCTORS AS D ON D.LICENSE_NO = B.LICENSE_NO
-      INNER JOIN USERS AS U2 ON U2.USER_ID = D.USER_ID
-      INNER JOIN ROOMS AS RO ON RO.ROOM_ID = B.ROOM_ID
-      INNER JOIN BRANCHES AS BR ON BR.BRANCH_ID = RO.BRANCH_ID
-      INNER JOIN HOSPITALS AS H ON H.HOSPITAL_ID = BR.HOSPITAL_ID
-      WHERE U.USER_ID = @USER_ID
+    B.BOOKING_ID, 
+    B.BOOKING_DATE, 
+    B.BOOKING_TIME, 
+    B.DURATION_OF_STAY, 
+    B.BOOKING_STATUS, 
+    B.PATIENT_ID, 
+    (U2.F_NAME + ' ' + U2.L_NAME) AS DOCTOR_NAME,
+    PR.PROCEDURE_NAME, 
+    PR.PROCEDURE_DURATION,
+    BR.BRANCH_ID,
+    BR.[LOCATION] AS BRANCH_LOCATION,
+    BR.PHONE_NO,
+    H.HOSPITAL_NAME,
+    RO.ROOM_ID,
+    RO.ROOM_TYPE
+FROM BOOKINGS AS B
+INNER JOIN PROCEDURES AS PR ON PR.PROCEDURE_ID = B.PROCEDURE_ID
+INNER JOIN PATIENTS AS PA ON PA.PATIENT_ID = B.PATIENT_ID
+INNER JOIN USERS AS U ON U.USER_ID = PA.USER_ID
+INNER JOIN DOCTORS AS D ON D.LICENSE_NO = B.LICENSE_NO
+INNER JOIN USERS AS U2 ON U2.USER_ID = D.USER_ID
+INNER JOIN ROOMS AS RO ON RO.ROOM_ID = B.ROOM_ID
+INNER JOIN BRANCHES AS BR ON BR.BRANCH_ID = RO.BRANCH_ID
+INNER JOIN HOSPITALS AS H ON H.HOSPITAL_ID = BR.HOSPITAL_ID;
       `
       );
 
@@ -114,26 +107,90 @@ router.get("/by-user/:id", authorizeUser([userTables.admin], true), async (req, 
 
 router.post("/", authenticateToken, authorizeUser([userTables.admin, userTables.patient], false), async (req, res) => {
   try {
-    let { BOOKING_ID, PATIENT_ID, PROCEDURE_ID, LICENSE_NO, ROOM_ID, BOOKING_DATE, BOOKING_TIME, DURATION_OF_STAY, BOOKING_STATUS } = req.body;
+    let {
+      BOOKING_ID,
+      PATIENT_ID,
+      PROCEDURE_ID,
+      LICENSE_NO,
+      ROOM_ID,
+      BOOKING_DATE,
+      BOOKING_TIME,
+      DURATION_OF_STAY,
+      BOOKING_STATUS,
+    } = req.body;
+
     BOOKING_ID = parseInt(BOOKING_ID);
     PATIENT_ID = parseInt(PATIENT_ID);
     PROCEDURE_ID = parseInt(PROCEDURE_ID);
     ROOM_ID = parseInt(ROOM_ID);
     DURATION_OF_STAY = parseInt(DURATION_OF_STAY);
-    
-    const columnNames = await fetchColumnNames("BOOKINGS");
 
+    const columnNames = await fetchColumnNames("BOOKINGS");
     if (!validateRequestBody(req.body, columnNames)) {
       return res.status(400).json({ error: "INVALID REQUEST BODY" });
     }
-    if (!(BOOKING_ID && PATIENT_ID && PROCEDURE_ID && LICENSE_NO && ROOM_ID && BOOKING_DATE && BOOKING_TIME && DURATION_OF_STAY && BOOKING_STATUS)) {
+
+    if (
+      !(
+        BOOKING_ID &&
+        PATIENT_ID &&
+        PROCEDURE_ID &&
+        LICENSE_NO &&
+        ROOM_ID &&
+        BOOKING_DATE &&
+        BOOKING_TIME &&
+        DURATION_OF_STAY &&
+        BOOKING_STATUS
+      )
+    ) {
       return res.status(400).json({ error: "ALL FIELDS ARE REQUIRED" });
     }
-    if (DURATION_OF_STAY <= 0 || !DURATION_OF_STAY) {
-      return res.status(400).json({ error: "BAD REQUEST" });
+
+    if (DURATION_OF_STAY <= 0) {
+      return res.status(400).json({ error: "DURATION MUST BE > 0" });
     }
 
     const pool = await sql.connect(config);
+
+    // 🔍 Check for same doctor, date, and time
+    const duplicateDoctorBooking = await pool
+      .request()
+      .input("LICENSE_NO", sql.VarChar(20), LICENSE_NO)
+      .input("BOOKING_DATE", sql.Date, BOOKING_DATE)
+      .input("BOOKING_TIME", sql.Time, BOOKING_TIME)
+      .query(
+        `SELECT * FROM BOOKINGS 
+         WHERE LICENSE_NO = @LICENSE_NO 
+         AND BOOKING_DATE = @BOOKING_DATE 
+         AND BOOKING_TIME = @BOOKING_TIME`
+      );
+
+    if (duplicateDoctorBooking.recordset.length > 0) {
+      return res.status(409).json({
+        error: "DOCTOR ALREADY HAS A BOOKING AT THAT DATE & TIME",
+      });
+    }
+
+    // 🔍 Check if the same room is booked at the same date and time
+    const duplicateRoomBooking = await pool
+      .request()
+      .input("ROOM_ID", sql.Int, ROOM_ID)
+      .input("BOOKING_DATE", sql.Date, BOOKING_DATE)
+      .input("BOOKING_TIME", sql.Time, BOOKING_TIME)
+      .query(
+        `SELECT * FROM BOOKINGS 
+         WHERE ROOM_ID = @ROOM_ID 
+         AND BOOKING_DATE = @BOOKING_DATE 
+         AND BOOKING_TIME = @BOOKING_TIME`
+      );
+
+    if (duplicateRoomBooking.recordset.length > 0) {
+      return res.status(409).json({
+        error: "ROOM IS ALREADY BOOKED AT THAT DATE & TIME",
+      });
+    }
+
+    // ✅ Insert booking if all checks pass
     const result = await pool
       .request()
       .input("BOOKING_ID", sql.Int, BOOKING_ID)
@@ -151,28 +208,13 @@ router.post("/", authenticateToken, authorizeUser([userTables.admin, userTables.
         VALUES (@BOOKING_ID, @PATIENT_ID, @PROCEDURE_ID, @LICENSE_NO, @ROOM_ID, @BOOKING_DATE, @BOOKING_TIME, @DURATION_OF_STAY, @BOOKING_STATUS)
         `
       );
-    if (result.rowsAffected[0] === 0) {
-      return res.status(400).json({ error: "BAD REQUEST" });
-    }
-    const userIDResult = await pool
-      .request()
-      .input("USER_ID", sql.Int, USER_ID)
-      .query(
-        `
-        SELECT PATIENT_ID FROM PATIENTS AS P
-        WHERE P.USER_ID = @USER_ID;
-        `
-      );
 
-    res.status(201).json({
-      message: "PATIENT ADDED SUCCESSFULLY",
-      userId: USER_ID,
-      patientId: userIDResult.recordset[0].PATIENT_ID,
-    });
+    res.status(201).json({ message: "BOOKING ADDED SUCCESSFULLY" });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
+
 
 router.delete("/by-user/:id", authenticateToken, authorizeUser([userTables.admin], true), async (req, res) => {
   try {
