@@ -14,7 +14,7 @@ import authorizeUser from "../scripts/authorizeUser.js";
 const router = express.Router();
 const config = JSON.parse(process.env.CONFIG);
 
-router.get("/", authenticateToken, authorizeUser(req, res, [userTables.admin], false), async (req, res) => {
+router.get("/", authenticateToken, authorizeUser([userTables.admin], false), async (req, res) => {
   try {
     const pool = await sql.connect(config);
     const result = await pool.request().query(
@@ -134,9 +134,8 @@ router.delete("/:id", authenticateToken, authorizeUser([userTables.admin], true)
   }
 });
 
-router.patch("/:id", authenticateToken, authorizeUser(req, res, [userTables.admin], true), async (req, res) => {
+router.patch("/:id", authenticateToken, authorizeUser([userTables.admin], true), async (req, res) => {
   const id = parseInt(req.params.id);
-  const clientID = parseInt(req.user.userId);
   const updates = req.body;
   const columnTypes = await fetchColumnTypes("USERS");
   const columnNames = await fetchColumnNames("USERS");
