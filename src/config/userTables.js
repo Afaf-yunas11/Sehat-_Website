@@ -1,4 +1,10 @@
-import sql from 'mssql';
+import sql from 'mssql';   //sql is  an object to access db functions
+
+
+//export let you use anything in another file
+//userTables is an object that cannot be changed
+
+//i-e our user can use these tables
 
 export const userTables = Object.freeze({
   patient: "PATIENTS",
@@ -6,6 +12,10 @@ export const userTables = Object.freeze({
   rescueWorker: "RESCUE_WORKERS",
   admin: "ADMINS",
 });
+
+
+//what are some tables allowed ,its an array 
+
 
 export const allowedTables = [
   "PATIENTS",

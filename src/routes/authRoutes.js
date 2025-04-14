@@ -2,9 +2,13 @@ import express from "express";
 import sql from "mssql";
 import jwt from "jsonwebtoken";
 
+
+//middlewares before routes 
+
 import sha256 from "../scripts/sha256.js";
 import validateEmail from "../scripts/validateEmail.js";
 import { allowedTables } from "../config/userTables.js";
+
 
 const router = express.Router();
 const config = JSON.parse(process.env.CONFIG);
