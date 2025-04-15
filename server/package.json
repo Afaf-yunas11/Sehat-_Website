@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "start": "node --env-file=.env server.js",
-    "dev": "node --env-file=.env --watch server.js"
+    "dev": "node --env-file=.env --watch server.js",
+    "app": "node "
   },
   "keywords": [],
   "author": "",
@@ -17,6 +18,7 @@
     "express": "^4.21.2",
     "jsonwebtoken": "^9.0.2",
     "mssql": "^11.0.1",
-    "node": "^23.11.0"
+    "node": "^23.11.0",
+    "react": "^19.1.0"
   }
 }

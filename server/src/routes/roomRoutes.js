@@ -1,5 +1,4 @@
 import express from "express";
-import sql, { MAX } from "mssql";
 import { userTables } from "../config/userTables.js";
 
 import authenticateToken from "../scripts/authenticateToken.js";
