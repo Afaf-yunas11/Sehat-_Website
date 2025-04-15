@@ -1,15 +1,3 @@
-//show branch
-
-//show particular branch data uinsg id
-
-//add barnch data but see if hospital id exists in hospital table
-
-//update but see if the updated hospital_id exists in hospital_table
-//delete branch with speicific id 
-
-
-
-
 import express from "express";
 import sql from "mssql";
 
@@ -55,12 +43,10 @@ router.get("/:id", authenticateToken, async (req, res) => {
   }
 });
 
-// Add branch (check if hospital_id exists)
 router.post("/", authenticateToken, authorizeUser([userTables.admin], false), async (req, res) => {
   try {
     const { HOSPITAL_ID, TOTAL_BEDS, TOTAL_VENTILATORS, LOCATION, LATITUDE, LONGITUDE, PHONE_NO } = req.body;
 
-    // Validate hospital exists
     const pool = await sql.connect(config);
     const hospitalCheck = await pool
       .request()

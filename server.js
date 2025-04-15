@@ -24,8 +24,7 @@ import procedureRoutes from "./src/routes/ProcedureRoute.js"
 import ProcedureAssignmentRoutes from "./src/routes/ProcedureAssingmentRoute.js";
 import bookingRoutes from "./src/routes/Booking.js";
 import branchRoutes from "./src/routes/Branch.js";
-
-
+import transactionRoutes from "./src/routes/transactionRoutes.js";
 
 
 const app = express();
@@ -49,6 +48,10 @@ app.use("/api/bookings", bookingRoutes);
 app.use("/api/procedures", procedureRoutes);
 app.use("/api/procedure-assingment",ProcedureAssignmentRoutes);
 app.use("/api/branch",branchRoutes);
+
+app.use("/api/transactions", transactionRoutes);
+
+
 /* SERVE STATIC FILES */
 app.use(express.static(path.join(__dirname, "public")));
 
