@@ -11,7 +11,12 @@ import { allowedTables } from "../config/userTables.js";
 
 
 const router = express.Router();
+
+//a mini router that we mount on our app(actual server)
+
 const config = JSON.parse(process.env.CONFIG);
+
+/*“Hey server, when someone sends data to /login using the POST method, run this code.”*/
 
 router.post("/login", async (req, res) => {
   try {
@@ -48,21 +53,21 @@ router.post("/login", async (req, res) => {
     }
 
     const user = result.recordset[0];
-    const hashedPassword = user.PASSWORD;
-    const hashedInput = sha256(password);
+    const hashedPassword = user.PASSWORD;   //hashed password already stored
+    const hashedInput = sha256(password);   //password is string
 
     if (hashedPassword != hashedInput) {
       console.log(`user: ${hashedInput}, sql: ${hashedPassword}`);
       return res.status(401).json({ error: "INVALID PASSWORD" });
     }
-
+//we setting token to our jwt key
     const token = jwt.sign(
       { userId: user.USER_ID, email: user.EMAIL, loginType: loginType },
       process.env.JWT_SECRET,
-      { expiresIn: "1h" }
+      { expiresIn: "1h" }    //converts in jwt token
     );
 
-    res.cookie("token", token, 
+    res.cookie("token", token,   //then in cookie we modifying token
     {
       domain:'localhost',
       httpOnly: true,

@@ -1,3 +1,7 @@
+
+/*Client —> Token Verification —> User privilege authorization —> API Response*/
+
+
 /* importing packages */
 
 import express from "express";   //to build server
