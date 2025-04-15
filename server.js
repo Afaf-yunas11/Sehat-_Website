@@ -20,10 +20,10 @@ import patientRoutes from "./src/routes/patientRoutes.js";
 import rescueWorkerRoutes from "./src/routes/rescueWorkerRoutes.js";
 import hospitalRoutes from "./src/routes/hospitalRoutes.js";
 import doctorRoutes from "./src/routes/Doctor.js";
-import procedureRoutes from "./src/routes/ProcedureRoute.js"
-import ProcedureAssignmentRoutes from "./src/routes/ProcedureAssingmentRoute.js";
-import bookingRoutes from "./src/routes/Booking.js";
-import branchRoutes from "./src/routes/Branch.js";
+import procedureRoutes from "./src/routes/patientRoutes.js"
+import ProcedureAssignmentRoutes from "./src/routes/procedureAssignmentRoutes.js";
+import bookingRoutes from "./src/routes/bookingRoutes.js";
+import branchRoutes from "./src/routes/branchRoutes.js";
 import transactionRoutes from "./src/routes/transactionRoutes.js";
 
 
