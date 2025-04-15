@@ -16,7 +16,26 @@ const config = JSON.parse(process.env.CONFIG);
 router.get("/", authenticateToken, authorizeUser([userTables.admin,userTables.rescueWorker,userTables.patient,userTables.doctor], true),async (req, res) => {
   try {
     const pool = await sql.connect(config);
-    const result = await pool.request().query(`SELECT * FROM HOSPITALS`);
+    const result = await pool.request().query(
+      `
+	  SELECT 
+  B.BRANCH_ID,
+  B.HOSPITAL_ID,
+  H.HOSPITAL_NAME,
+  B.TOTAL_BEDS,
+  B.TOTAL_VENTILATORS,
+  B.LOCATION,
+  B.LATITUDE,
+  B.LONGITUDE,
+  B.PHONE_NO
+FROM 
+  BRANCHES B
+INNER JOIN 
+  HOSPITALS H
+ON 
+  B.HOSPITAL_ID = H.HOSPITAL_ID;
+`
+    );
     res.status(200).json(result.recordset);
   } catch (error) {
     res.status(500).json({ error: error.message });
