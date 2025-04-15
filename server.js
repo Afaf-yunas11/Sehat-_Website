@@ -17,6 +17,8 @@ import path from "path";
 import userRoutes from "./src/routes/userRoutes.js";
 import authRoutes from "./src/routes/authRoutes.js";
 import patientRoutes from "./src/routes/patientRoutes.js";
+import rescueWorkerRoutes from "./src/routes/rescueWorkerRoutes.js";
+import hospitalRoutes from "./src/routes/hospitalRoutes.js";
 
 const app = express();
 const __filename = url.fileURLToPath(import.meta.url);
@@ -32,6 +34,8 @@ app.use(cookieParser());
 app.use("/api/users", userRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/patients", patientRoutes);
+app.use("/api/rescue-workers", rescueWorkerRoutes);
+app.use("/api/hospitals", hospitalRoutes);
 
 /* SERVE STATIC FILES */
 app.use(express.static(path.join(__dirname, "public")));

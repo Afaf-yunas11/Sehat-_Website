@@ -1,11 +1,8 @@
 import jwt from "jsonwebtoken";
 
-
-//a middleware   ,request object has the login data
 function authenticateToken(req, res, next) {
   const token = req.cookies.token;    /*req has alot of things url cookies data*/
   if (!token) {
-    console.log(token);
     return res.status(401).json({ error: "INVALID TOKEN FORMAT" });
   }
 

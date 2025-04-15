@@ -9,8 +9,7 @@ export default function sha256(input) {
 //createhash ->update it acc to input then convert it in hex
 // SHA-256 = Secure Hash Algorithm 256-bit 
 
-
-/*🔐 What This Code Does:
+/*What This Code Does:
 It takes an input string, hashes it using SHA-256, and returns the hashed value as a hex string.*/
 
 /*sha256("password123");

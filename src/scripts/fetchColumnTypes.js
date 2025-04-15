@@ -5,8 +5,6 @@ const config = JSON.parse(process.env.CONFIG);
 //process is an object it allows to accees environment variable CONFIG in env.example file
 //now config has your db connection requrements
 
-
-
 export default async function fetchColumnTypes(tableName) 
 {
   const pool = await sql.connect(config);

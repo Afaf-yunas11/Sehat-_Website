@@ -11,24 +11,31 @@ import authorizeUser from "../scripts/authorizeUser.js";
 const router = express.Router();
 const config = JSON.parse(process.env.CONFIG);
 
-router.get("/", authenticateToken, authorizeUser([userTables.admin, userTables.doctor, userTables.rescueWorker], false), async (req, res) => {
+router.get("/", authenticateToken, authorizeUser([userTables.admin, userTables.rescueWorker], false), async (req, res) => {
   try {
     const pool = await sql.connect(config);
     const result = await pool.request().query(
       `
-      SELECT U.USER_ID, PATIENT_ID, F_NAME, L_NAME, ACCOUNT_STATUS, GENDER, BLOOD_GROUP, WEIGHT, HEIGHT, ADDRESS FROM USERS AS U
-      INNER JOIN PATIENTS AS P ON U.USER_ID = P.USER_ID
+      SELECT U.USER_ID, LICENSE_NO, F_NAME, L_NAME, GENDER,  ADDRESS ,DATE_STARTED
+
+      FROM USERS AS U
+      INNER JOIN RESCUE_WORKERS AS R
+       ON U.USER_ID = R.USER_ID
       `
     );
     res.status(200).json(result.recordset);
-  } catch (error) {
+  }
+
+
+  catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-router.get("/by-user/:id", authorizeUser([userTables.admin, userTables.doctor, userTables.rescueWorker], true), async (req, res) => {
+router.get("/by-user/:id", authenticateToken, authorizeUser([userTables.admin, userTables.rescueWorker], true), async (req, res) => {
   try {
     const id = parseInt(req.params.id);
+
     const pool = await sql.connect(config);
     if (isNaN(id)) {
       return res.status(400).json({ error: "INVALID USER ID" });
@@ -39,14 +46,17 @@ router.get("/by-user/:id", authorizeUser([userTables.admin, userTables.doctor, u
       .input("USER_ID", sql.Int, id)
       .query(
         `
-      SELECT U.USER_ID, PATIENT_ID, F_NAME, L_NAME, ACCOUNT_STATUS, GENDER, BLOOD_GROUP, WEIGHT, HEIGHT, ADDRESS FROM USERS AS U
-      INNER JOIN PATIENTS AS P ON U.USER_ID = P.USER_ID
-      WHERE P.USER_ID = @USER_ID
+       SELECT U.USER_ID, LICENSE_NO, F_NAME, L_NAME, GENDER,  ADDRESS ,DATE_STARTED
+
+      FROM USERS AS U
+      INNER JOIN RESCUE_WORKERS AS R
+       ON U.USER_ID = R.USER_ID
+      WHERE R.USER_ID = @USER_ID
       `
       );
 
     if (result.recordset.length === 0)
-      return res.status(404).json({ error: "PATIENT NOT FOUND" });
+      return res.status(404).json({ error: "RESCUE WORKER NOT FOUND" });
 
     res.status(200).json(result.recordset);
   } catch (error) {
@@ -56,15 +66,14 @@ router.get("/by-user/:id", authorizeUser([userTables.admin, userTables.doctor, u
 
 router.post("/", async (req, res) => {
   try {
-    let { USER_ID, BLOOD_GROUP, WEIGHT, HEIGHT, ADDRESS } = req.body;
-    USER_ID = parseInt(USER_ID);
-    WEIGHT = parseInt(WEIGHT);
-    HEIGHT = parseInt(HEIGHT);
+    let { USER_ID, LICENSE_NO, DATE_STARTED, ADDRESS } = req.body;
 
-    const columnNames = await fetchColumnNames("PATIENTS");
+    USER_ID = parseInt(USER_ID);
+
+    const columnNames = await fetchColumnNames("RESCUE_WORKERS");
 
     if (
-      !authorizeUser(req, res, [userTables.admin, userTables.patient], false)
+      !authorizeUser(req, res, [userTables.admin, userTables.rescueWorker], false)
     ) {
       return res.status(403).json({ error: "FORBIDDEN" });
     }
@@ -72,43 +81,29 @@ router.post("/", async (req, res) => {
     if (!validateRequestBody(req.body, columnNames)) {
       return res.status(400).json({ error: "INVALID REQUEST BODY" });
     }
-    if (!(USER_ID && BLOOD_GROUP && WEIGHT && HEIGHT && ADDRESS)) {
+
+    if (!(USER_ID && LICENSE_NO && DATE_STARTED && ADDRESS)) {
       return res.status(400).json({ error: "ALL FIELDS ARE REQUIRED" });
-    }
-    if (HEIGHT <= 0 || WEIGHT <= 0 || !HEIGHT || !WEIGHT || !USER_ID) {
-      return res.status(400).json({ error: "BAD REQUEST" });
     }
 
     const pool = await sql.connect(config);
-    const result = await pool
+    await pool
       .request()
       .input("USER_ID", sql.Int, USER_ID)
-      .input("BLOOD_GROUP", sql.VarChar(3), BLOOD_GROUP)
-      .input("WEIGHT", sql.Int, WEIGHT)
-      .input("HEIGHT", sql.Int, HEIGHT)
+      .input("LICENSE_NO", sql.VarChar(20), LICENSE_NO)
+      .input("DATE_STARTED", sql.Date, DATE_STARTED)
       .input("ADDRESS", sql.VarChar(sql.MAX), ADDRESS)
       .query(
         `
-      INSERT INTO PATIENTS (USER_ID, BLOOD_GROUP, WEIGHT, HEIGHT, ADDRESS)
-      VALUES 
-      (@USER_ID, @BLOOD_GROUP, @WEIGHT, @HEIGHT, @ADDRESS)
-      `
-      );
-
-    const userIDResult = await pool
-      .request()
-      .input("USER_ID", sql.Int, USER_ID)
-      .query(
-        `
-        SELECT PATIENT_ID FROM PATIENTS AS P
-        WHERE P.USER_ID = @USER_ID;
+        INSERT INTO RESCUE_WORKERS (LICENSE_NO, USER_ID, DATE_STARTED, ADDRESS)
+        VALUES (@LICENSE_NO, @USER_ID, @DATE_STARTED, @ADDRESS)
         `
       );
 
     res.status(201).json({
-      message: "PATIENT ADDED SUCCESSFULLY",
+      message: "RESCUE WORKER ADDED SUCCESSFULLY",
       userId: USER_ID,
-      patientId: userIDResult.recordset[0].PATIENT_ID,
+      licenseNo: LICENSE_NO,
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -127,16 +122,17 @@ router.delete("/by-user/:id", authenticateToken, authorizeUser([userTables.admin
     const result = await pool
       .request()
       .input("USER_ID", sql.Int, id)
-      .query(`DELETE FROM PATIENTS WHERE USER_ID = @USER_ID`);
+      .query(`DELETE FROM RESCUE_WORKERS WHERE USER_ID = @USER_ID`);
 
     if (result.rowsAffected[0] === 0) {
       return res
         .status(404)
-        .json({ error: `PATIENT WITH USER ID ${id} NOT FOUND` });
+        .json({ error: `RESCUE WORKER WITH USER ID ${id} NOT FOUND` });
     }
-    res
-      .status(200)
-      .json({ message: `PATIENT WITH USER ID ${id} DELETED SUCCESSFULLY` });
+
+    res.status(200).json({
+      message: `RESCUE WORKER WITH USER ID ${id} DELETED SUCCESSFULLY`,
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -145,8 +141,9 @@ router.delete("/by-user/:id", authenticateToken, authorizeUser([userTables.admin
 router.patch("/by-user/:id", authenticateToken, authorizeUser([userTables.admin], true), async (req, res) => {
   const id = parseInt(req.params.id);
   const updates = req.body;
-  const columnTypes = await fetchColumnTypes("PATIENTS");
-  const columnNames = await fetchColumnNames("PATIENTS");
+
+  const columnTypes = await fetchColumnTypes("RESCUE_WORKERS");
+  const columnNames = await fetchColumnNames("RESCUE_WORKERS");
 
   if (Object.keys(updates).length === 0) {
     return res.status(400).json({ error: "NO FIELDS TO UPDATE" });
@@ -162,29 +159,27 @@ router.patch("/by-user/:id", authenticateToken, authorizeUser([userTables.admin]
 
   for (let field in updates) {
     if (field === "USER_ID") {
-      return res.status(403).json({ error: "FORBIDDEN" });
+      return res.status(403).json({ error: "USER_ID CANNOT BE UPDATED" });
     }
-    if (field === "BLOOD_GROUP") {
-      updates[field] = updates[field].toUpperCase();
-    }
+
     request.input(field, columnTypes[field], updates[field]);
     updateFields.push(`${field} = @${field}`);
   }
-  request.input("USER_ID", sql.Int, id);
 
-  const query = `UPDATE PATIENTS SET ${updateFields.join(
+  request.input("USER_ID", sql.Int, id);
+  const query = `UPDATE RESCUE_WORKERS SET ${updateFields.join(
     ", "
   )} WHERE USER_ID = @USER_ID`;
 
   try {
     const result = await request.query(query);
     if (result.rowsAffected[0] === 0) {
-      return res.status(404).json({ error: "USER NOT FOUND" });
+      return res.status(404).json({ error: "RESCUE WORKER NOT FOUND" });
     }
 
-    res
-      .status(200)
-      .json({ message: `PATIENT WITH USER ID ${id} UPDATED SUCCESSFULLY` });
+    res.status(200).json({
+      message: `RESCUE WORKER WITH USER ID ${id} UPDATED SUCCESSFULLY`,
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
