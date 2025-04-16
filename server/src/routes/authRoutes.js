@@ -57,7 +57,6 @@ router.post("/login", async (req, res) => {
     const hashedInput = sha256(password);   //password is string
 
     if (hashedPassword != hashedInput) {
-      console.log(`user: ${hashedInput}, sql: ${hashedPassword}`);
       return res.status(401).json({ error: "INVALID PASSWORD" });
     }
 //we setting token to our jwt key
@@ -69,10 +68,9 @@ router.post("/login", async (req, res) => {
 
     res.cookie("token", token,   //then in cookie we modifying token
     {
-      domain:'localhost',
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "Strict",
+      secure: false,
+      sameSite: "lax",
       maxAge: 3600 * 1000,
     });
 
