@@ -1,14 +1,21 @@
 // client/src/App.js
 import React from 'react';
-import LoginPage from './components/loginPage';  // Step 1: Import Counter component
-import Header from './components/header'; // Import the Header component
+import LoginForm from './pages/login/login'; // Import the Header component
+import routes from './routes/routes'; // Import the routes
+
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+
 
 function App() {
   return (
-    <div>
-      <Header />
-      <LoginPage /> 
-    </div>
+    <Router>
+      <div>
+        <Routes>
+          <Route path={routes.login} element={<LoginForm />} />
+          {/* Add more routes as needed */}
+        </Routes>
+      </div>
+    </Router>
   );
 }
 
