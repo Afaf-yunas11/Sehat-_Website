@@ -52,6 +52,45 @@ router.get("/:id", authenticateToken, authorizeUser([userTables.admin], false), 
   }
 });
 
+router.get("/by-branch-and-procedure/:branchId/:procedureId", authenticateToken, authorizeUser([userTables.admin, userTables.patient], false), async (req, res) => {
+
+  const branchId = parseInt(req.params.branchId);
+  const procedureId = parseInt(req.params.procedureId);
+  console.log(branchId, procedureId);
+  if (isNaN(branchId) || isNaN(procedureId)) {
+    return res.status(400).json({ error: "INVALID HOSPITAL ID OR PROCEDURE ID" });
+  }
+  try {
+    const pool = await sql.connect(config);
+    const result = await pool.request()
+      .input("BRANCH_ID", sql.Int, branchId)
+      .input("PROCEDURE_ID", sql.Int, procedureId)
+      .query(`
+        SELECT 
+          D.LICENSE_NO,
+          U.F_NAME,
+          U.L_NAME,
+          DS.SPECIALIZATION_NAME,
+          D.RATING,
+          D.STATUS
+        FROM DOCTORS AS D
+        INNER JOIN USERS AS U ON D.USER_ID = U.USER_ID
+        INNER JOIN PROCEDURE_DOCTOR AS PD ON D.LICENSE_NO = PD.LICENSE_NO
+        INNER JOIN PROCEDURES AS P ON PD.PROCEDURE_ID = P.PROCEDURE_ID
+        INNER JOIN BRANCHES AS B ON D.BRANCH_ID = B.BRANCH_ID
+        INNER JOIN HOSPITALS AS H ON B.HOSPITAL_ID = H.HOSPITAL_ID
+        INNER JOIN DOCTOR_SPECIALIZATIONS AS DS ON D.SPECIALIZATION = DS.SPECIALIZATION_ID
+        WHERE P.PROCEDURE_ID = @PROCEDURE_ID
+        AND B.BRANCH_ID = @BRANCH_ID
+        AND LOWER(STATUS) IN ('active', 'on call')
+      `);
+    res.status(200).json(result.recordset);
+  }
+  catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+})
+
 // POST add new doctor
 router.post("/", authenticateToken, authorizeUser([userTables.admin], false), async (req, res) => {
   const { LICENSE_NO, BRANCH_ID, USER_ID, SPECIALIZATION, STATUS, DATE_STARTED, RATING } = req.body;

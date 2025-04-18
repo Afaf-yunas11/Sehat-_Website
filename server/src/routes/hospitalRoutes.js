@@ -74,7 +74,7 @@ router.get("/by-procedure-id/:id", authenticateToken, authorizeUser([userTables.
         INNER JOIN
           HOSPITALS H ON B.HOSPITAL_ID = H.HOSPITAL_ID
         WHERE 
-          P.PROCEDURE_ID = @PROCEDURE_ID
+          P.PROCEDURE_ID = @PROCEDURE_ID AND LOWER(D.[STATUS]) IN ('active', 'on call')
         ORDER BY H.HOSPITAL_NAME, B.LOCATION;
       `);
 

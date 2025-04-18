@@ -30,7 +30,9 @@ const Dashboard = () => {
   const [procedures, setProcedures] = useState([]);
   const [selectedProcedure, setSelectedProcedure] = useState(null);
   const [hospitals, setHospitals] = useState([]);
-  const [selectedHospital, setSelectedHospital] = useState(null);
+  const [selectedHospitalIndex, setSelectedHospitalIndex] = useState(null);
+  const [doctors, setDoctors] = useState([]);
+  const [rooms, setRooms] = useState([]); // Add this state at the top with other useStates
 
   const [newAppointment, setNewAppointment] = useState({
     BOOKING_DATE: '',
@@ -208,6 +210,54 @@ const Dashboard = () => {
     }
   };
 
+
+
+  useEffect(() => {
+    // Only fetch if both a hospital and procedure are selected
+    if (
+      selectedHospitalIndex === null ||
+      selectedHospitalIndex === undefined ||
+      selectedHospitalIndex < 0 ||
+      !hospitals[selectedHospitalIndex] ||
+      selectedProcedure === null ||
+      selectedProcedure === undefined ||
+      selectedProcedure < 0
+    ) {
+      setRooms([]); // Clear rooms if not valid
+      return;
+    }
+
+    const branchId = hospitals[selectedHospitalIndex].BRANCH_ID;
+    if (!branchId) {
+      setRooms([]);
+      return;
+    }
+
+    const fetchRoomsByBranch = async () => {
+      try {
+        const response = await fetch(
+          `http://localhost:8000/api/rooms/by-branch-id/${branchId}`,
+          {
+            method: 'GET',
+            credentials: 'include'
+          }
+        );
+        if (response.status === 401) {
+          localStorage.removeItem('userData');
+          window.location.href = '/login';
+          return;
+        }
+        const data = await response.json();
+        setRooms(data);
+      } catch (error) {
+        console.error('Error fetching rooms:', error);
+        setRooms([]);
+      }
+    };
+
+    fetchRoomsByBranch();
+  }, [selectedHospitalIndex, selectedProcedure, hospitals]);
+
   /* FETCHES ONLY HOSPITALS THAT CAN PERFORM A SPECIFIC PROCEDURE */
 
 
@@ -228,7 +278,8 @@ const Dashboard = () => {
   const isNewFormAllValid = Object.values(newFormValid).every(Boolean);
 
   useEffect(() => {
-    if (!selectedProcedure) return;
+    if (selectedProcedure === null || selectedProcedure === undefined) return;
+    if (selectedProcedure < 0) return;
     const fetchHospitalNames = async () => {
       try {
         const response = await fetch(`http://localhost:8000/api/hospitals/by-procedure-id/${procedures[selectedProcedure].PROCEDURE_ID}`, {
@@ -240,8 +291,9 @@ const Dashboard = () => {
           localStorage.removeItem('userData');
           window.location.href = '/login';
         }
-        setHospitals(data);
+        console.log(data);
         await normalizeHospitalNames(data);
+        setHospitals(data);
         setNewAppointment({ ...newAppointment, HOSPITAL_NAME: data[0].HOSPITAL_NAME });
       } catch (error) {
         console.error('Error fetching hospitals:', error);
@@ -249,6 +301,38 @@ const Dashboard = () => {
     }
     fetchHospitalNames();
   }, [selectedProcedure])
+
+  useEffect(() => {
+    if (selectedHospitalIndex === null || selectedHospitalIndex === undefined) return;
+    if (selectedProcedure === null || selectedProcedure === undefined) return;
+    if (selectedHospitalIndex < 0 || selectedProcedure < 0) return;
+    const fetchDoctorsByProcedureAndHospital = async (procedureId, hospitalId) => {
+      try {
+        const response = await fetch(
+          `http://localhost:8000/api/doctors/by-branch-and-procedure/${hospitalId}/${procedureId}`,
+          {
+            method: 'GET',
+            credentials: 'include'
+          }
+        );
+        if (response.status === 401) {
+          localStorage.removeItem('userData');
+          window.location.href = '/login';
+          return [];
+        }
+        const data = await response.json();
+        if (data.length === 0) {
+          console.error('No doctors found for the selected hospital and procedure');
+          setDoctors([]);
+        }
+        setDoctors(data);
+      } catch (error) {
+        console.error('Error fetching doctors:', error);
+        return [];
+      }
+    };
+    fetchDoctorsByProcedureAndHospital(procedures[selectedProcedure].PROCEDURE_ID, hospitals[selectedHospitalIndex].BRANCH_ID);
+  }, [selectedHospitalIndex, selectedProcedure]);
 
   return (
     <>
@@ -554,20 +638,28 @@ const Dashboard = () => {
                   <select
                     className={`form-select border ${newFormValid.HOSPITAL_NAME ? 'border-primary' : 'border-danger'}`}
                     id="newHospitalName"
-                    value={newAppointment.HOSPITAL_NAME}
+                    value={selectedHospitalIndex ?? ""}
                     disabled={!newFormValid.PROCEDURE_NAME}
-                    onChange={e => 
-                    {
-                      console.log(e.target.value);
-                      setNewAppointment({ ...newAppointment, HOSPITAL_NAME: e.target.value })
+                    onChange={e => {
+                      if (e.target.value === "") {
+                        setNewAppointment({ ...newAppointment, HOSPITAL_NAME: "", ROOM_TYPE: "" });
+                        setSelectedHospitalIndex(null);
+                        setRooms([]);
+                      } else {
+                        setNewAppointment({ ...newAppointment, HOSPITAL_NAME: hospitals[e.target.value]?.HOSPITAL_NAME || "", ROOM_TYPE: "" });
+                        setSelectedHospitalIndex(Number(e.target.value));
+                        setRooms([]);
+                      }
                     }}
                   >
                     <option value="">Select Hospital</option>
-                    {hospitals.map((hospital, idx) => (
-                      <option key={idx} value={idx}>
-                        {`${hospital.HOSPITAL_NAME} - ${hospital.LOCATION}`}
-                      </option>
-                    ))}
+                    {
+                      (hospitals || []).map((hospital, idx) => (
+                        <option key={idx} value={idx}>
+                          {`${hospital.HOSPITAL_NAME} - ${hospital.LOCATION}`}
+                        </option>
+                      ))
+                    }
                   </select>
                   <label htmlFor="newHospitalName">Hospital Name</label>
                 </div>
@@ -577,13 +669,25 @@ const Dashboard = () => {
                   <select
                     className={`form-select border ${newFormValid.PROCEDURE_NAME ? 'border-primary' : 'border-danger'}`}
                     id="newProcedureName"
-                    value={selectedProcedure ?? ""} 
+                    value={selectedProcedure ?? -1}
                     onChange={async e => {
-                      setNewAppointment({ ...newAppointment, PROCEDURE_NAME: procedures[e.target.value].PROCEDURE_NAME });
-                      setSelectedProcedure(e.target.value);
+                      const idx = Number(e.target.value);
+                      if (idx < 0) {
+                        setSelectedProcedure(null);
+                        setNewAppointment({ ...newAppointment, PROCEDURE_NAME: "", HOSPITAL_NAME: "", DOCTOR_NAME: "", ROOM_TYPE: "" });
+                        setSelectedHospitalIndex(null);
+                        setDoctors([]);
+                        setRooms([]);
+                        return;
+                      }
+                      setNewAppointment({ ...newAppointment, PROCEDURE_NAME: procedures[idx].PROCEDURE_NAME, HOSPITAL_NAME: "", DOCTOR_NAME: "", ROOM_TYPE: "" });
+                      setSelectedProcedure(idx);
+                      setSelectedHospitalIndex(null);
+                      setDoctors([]);
+                      setRooms([]);
                     }}
                   >
-                    <option value="">Select Procedure</option>
+                    <option value={-1}>Select Procedure</option>
                     {procedures.map((procedure, idx) => (
                       <option key={idx} value={idx}>
                         {procedure.PROCEDURE_NAME}
@@ -595,25 +699,39 @@ const Dashboard = () => {
               </div>
               <div className="col-md-6">
                 <div className="form-floating mb-3">
-                  <input
-                    type="text"
-                    className={`form-control border ${newFormValid.DOCTOR_NAME ? 'border-primary' : 'border-danger'}`}
+                  <select
+                    className={`form-select border ${newFormValid.DOCTOR_NAME ? 'border-primary' : 'border-danger'}`}
                     id="newDoctorName"
                     value={newAppointment.DOCTOR_NAME}
                     onChange={e => setNewAppointment({ ...newAppointment, DOCTOR_NAME: e.target.value })}
-                  />
+                    disabled={!doctors || doctors.length === 0}
+                  >
+                    <option value="">Select Doctor</option>
+                    {doctors && doctors.map((doctor, idx) => (
+                      <option key={idx} value={doctor.DOCTOR_NAME}>
+                        {`Dr. ${doctor.F_NAME} ${doctor.L_NAME}`}
+                      </option>
+                    ))}
+                  </select>
                   <label htmlFor="newDoctorName">Doctor Name</label>
                 </div>
               </div>
               <div className="col-md-6">
                 <div className="form-floating mb-3">
-                  <input
-                    type="text"
-                    className={`form-control border ${newFormValid.ROOM_TYPE ? 'border-primary' : 'border-danger'}`}
+                  <select
+                    className={`form-select border ${newFormValid.ROOM_TYPE ? 'border-primary' : 'border-danger'}`}
                     id="newRoomType"
                     value={newAppointment.ROOM_TYPE}
                     onChange={e => setNewAppointment({ ...newAppointment, ROOM_TYPE: e.target.value })}
-                  />
+                    disabled={!rooms || rooms.length === 0}
+                  >
+                    <option value="">Select Room</option>
+                    {rooms && rooms.map((room, idx) => (
+                      <option key={room.ROOM_ID} value={room.ROOM_TYPE}>
+                        {`${room.ROOM_TYPE} (Max: ${room.MAX_OCCUPANCY}, $${room.ROOM_COST_PER_NIGHT}/night)`}
+                      </option>
+                    ))}
+                  </select>
                   <label htmlFor="newRoomType">Room Type</label>
                 </div>
               </div>

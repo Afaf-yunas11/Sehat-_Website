@@ -1,5 +1,6 @@
 import express from "express";
 import { userTables } from "../config/userTables.js";
+import sql from "mssql";
 
 import authenticateToken from "../scripts/authenticateToken.js";
 import validateRequestBody from "../scripts/validateRequestBody.js";
@@ -48,6 +49,58 @@ router.get("/:id", authorizeUser([userTables.admin], true), async (req, res) => 
 
     if (result.recordset.length === 0)
       return res.status(404).json({ error: "ROOM NOT FOUND" });
+
+    res.status(200).json(result.recordset);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get("/by-branch-id/:branchId", authenticateToken, authorizeUser([userTables.admin, userTables.patient], false), async (req, res) => {
+  try {
+    const branchId = parseInt(req.params.branchId);
+    if (isNaN(branchId)) {
+      return res.status(400).json({ error: "INVALID BRANCH ID" });
+    }
+
+    const pool = await sql.connect(config);
+    const result = await pool
+      .request()
+      .input("BRANCH_ID", sql.Int, branchId)
+      .query(
+        `
+        SELECT R.ROOM_ID, R.MAX_OCCUPANCY, R.ROOM_TYPE, R.ROOM_COST_PER_NIGHT
+        FROM ROOMS AS R
+        INNER JOIN BRANCHES AS B ON B.BRANCH_ID = R.BRANCH_ID
+        INNER JOIN HOSPITALS AS H ON H.HOSPITAL_ID = B.HOSPITAL_ID
+        WHERE R.BRANCH_ID = @BRANCH_ID
+        `
+      );
+
+    res.status(200).json(result.recordset);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});router.get("/by-branch/:branchId", authenticateToken, authorizeUser([userTables.admin], false), async (req, res) => {
+  try {
+    const branchId = parseInt(req.params.branchId);
+    if (isNaN(branchId)) {
+      return res.status(400).json({ error: "INVALID BRANCH ID" });
+    }
+
+    const pool = await sql.connect(config);
+    const result = await pool
+      .request()
+      .input("BRANCH_ID", sql.Int, branchId)
+      .query(
+        `
+        SELECT R.ROOM_ID, B.BRANCH_ID, B.[LOCATION], H.HOSPITAL_NAME, R.MAX_OCCUPANCY, R.ROOM_TYPE, R.ROOM_COST_PER_NIGHT
+        FROM ROOMS AS R
+        INNER JOIN BRANCHES AS B ON B.BRANCH_ID = R.BRANCH_ID
+        INNER JOIN HOSPITALS AS H ON H.HOSPITAL_ID = B.HOSPITAL_ID
+        WHERE R.BRANCH_ID = @BRANCH_ID
+        `
+      );
 
     res.status(200).json(result.recordset);
   } catch (error) {

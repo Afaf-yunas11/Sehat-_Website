@@ -21,11 +21,15 @@ router.get(
       const pool = await sql.connect(config);
       const result = await pool.request().query(
         `
-        SELECT 
+        SELECT DISTINCT
           P.PROCEDURE_ID,
           P.PROCEDURE_NAME,
           P.PROCEDURE_DURATION
         FROM PROCEDURES AS P
+        INNER JOIN PROCEDURE_DOCTOR AS PD ON P.PROCEDURE_ID = PD.PROCEDURE_ID
+        INNER JOIN DOCTORS AS D ON PD.LICENSE_NO = D.LICENSE_NO
+        WHERE LOWER(D.[STATUS]) IN ('active', 'on call')
+        ORDER BY P.PROCEDURE_NAME;
       `
     );
       res.status(200).json(result.recordset);
