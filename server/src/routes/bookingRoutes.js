@@ -49,13 +49,14 @@ router.get("/", authenticateToken, authorizeUser([userTables.admin], false), asy
       INNER JOIN HOSPITALS AS H ON H.HOSPITAL_ID = BR.HOSPITAL_ID
       `
     );
+    console.log(result.recordset);
     res.status(200).json(result.recordset);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-router.get("/by-user/:id", authorizeUser([userTables.admin], true), async (req, res) => {
+router.get("/by-user/:id", authenticateToken, authorizeUser([userTables.admin], true), async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const pool = await sql.connect(config);
@@ -69,35 +70,38 @@ router.get("/by-user/:id", authorizeUser([userTables.admin], true), async (req, 
       .query(
         `
       SELECT 
-    B.BOOKING_ID, 
-    B.BOOKING_DATE, 
-    B.BOOKING_TIME, 
-    B.DURATION_OF_STAY, 
-    B.BOOKING_STATUS, 
-    B.PATIENT_ID, 
-    (U2.F_NAME + ' ' + U2.L_NAME) AS DOCTOR_NAME,
-    PR.PROCEDURE_NAME, 
-    PR.PROCEDURE_DURATION,
-    BR.BRANCH_ID,
-    BR.[LOCATION] AS BRANCH_LOCATION,
-    BR.PHONE_NO,
-    H.HOSPITAL_NAME,
-    RO.ROOM_ID,
-    RO.ROOM_TYPE
-FROM BOOKINGS AS B
-INNER JOIN PROCEDURES AS PR ON PR.PROCEDURE_ID = B.PROCEDURE_ID
-INNER JOIN PATIENTS AS PA ON PA.PATIENT_ID = B.PATIENT_ID
-INNER JOIN USERS AS U ON U.USER_ID = PA.USER_ID
-INNER JOIN DOCTORS AS D ON D.LICENSE_NO = B.LICENSE_NO
-INNER JOIN USERS AS U2 ON U2.USER_ID = D.USER_ID
-INNER JOIN ROOMS AS RO ON RO.ROOM_ID = B.ROOM_ID
-INNER JOIN BRANCHES AS BR ON BR.BRANCH_ID = RO.BRANCH_ID
-INNER JOIN HOSPITALS AS H ON H.HOSPITAL_ID = BR.HOSPITAL_ID;
+        B.BOOKING_ID, 
+        B.BOOKING_DATE, 
+        B.BOOKING_TIME, 
+        B.DURATION_OF_STAY, 
+        B.BOOKING_STATUS, 
+        B.PATIENT_ID, 
+        (U2.F_NAME + ' ' + U2.L_NAME) AS DOCTOR_NAME,
+        PR.PROCEDURE_NAME, 
+        PR.PROCEDURE_DURATION,
+        BR.BRANCH_ID,
+        BR.[LOCATION] AS BRANCH_LOCATION,
+        BR.PHONE_NO,
+        BR.LATITUDE,
+        BR.LONGITUDE,
+        H.HOSPITAL_NAME,
+        RO.ROOM_ID,
+        RO.ROOM_TYPE
+      FROM BOOKINGS AS B
+      INNER JOIN PROCEDURES AS PR ON PR.PROCEDURE_ID = B.PROCEDURE_ID
+      INNER JOIN PATIENTS AS PA ON PA.PATIENT_ID = B.PATIENT_ID
+      INNER JOIN USERS AS U ON U.USER_ID = PA.USER_ID
+      INNER JOIN DOCTORS AS D ON D.LICENSE_NO = B.LICENSE_NO
+      INNER JOIN USERS AS U2 ON U2.USER_ID = D.USER_ID
+      INNER JOIN ROOMS AS RO ON RO.ROOM_ID = B.ROOM_ID
+      INNER JOIN BRANCHES AS BR ON BR.BRANCH_ID = RO.BRANCH_ID
+      INNER JOIN HOSPITALS AS H ON H.HOSPITAL_ID = BR.HOSPITAL_ID
+      WHERE U.USER_ID = @USER_ID
       `
       );
 
     if (result.recordset.length === 0)
-      return res.status(404).json({ error: "BOOKING NOT FOUND" });
+      return res.status(404).json({ error: "BOOKING(S) NOT FOUND" });
 
     res.status(200).json(result.recordset);
   } catch (error) {
@@ -216,39 +220,39 @@ router.post("/", authenticateToken, authorizeUser([userTables.admin, userTables.
 });
 
 
-router.delete("/by-user/:id", authenticateToken, authorizeUser([userTables.admin], true), async (req, res) => {
+router.delete("/by-booking/:id", authenticateToken, authorizeUser([userTables.admin, userTables.patient], true), async (req, res) => {
   try {
     const id = parseInt(req.params.id);
 
     if (isNaN(id)) {
-      return res.status(400).json({ error: "INVALID USER ID" });
+      return res.status(400).json({ error: "INVALID BOOKING ID" });
     }
 
     const pool = await sql.connect(config);
     const result = await pool
       .request()
-      .input("USER_ID", sql.Int, id)
-      .query(`DELETE FROM PATIENTS WHERE USER_ID = @USER_ID`);
+      .input("BOOKING_ID", sql.Int, id)
+      .query(`DELETE FROM BOOKINGS WHERE BOOKING_ID = @BOOKING_ID`);
 
     if (result.rowsAffected[0] === 0) {
       return res
         .status(404)
-        .json({ error: `PATIENT WITH USER ID ${id} NOT FOUND` });
+        .json({ error: `BOOKING ${id} NOT FOUND` });
     }
     res
       .status(200)
-      .json({ message: `PATIENT WITH USER ID ${id} DELETED SUCCESSFULLY` });
+      .json({ message: `BOOKING ${id} DELETED SUCCESSFULLY` });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-router.patch("/by-user/:id", authenticateToken, authorizeUser([userTables.admin], true), async (req, res) => {
+router.patch("/by-booking/:id", authenticateToken, authorizeUser([userTables.admin, userTables.patient], true), async (req, res) => {
   const id = parseInt(req.params.id);
   const updates = req.body;
-  const columnTypes = await fetchColumnTypes("PATIENTS");
-  const columnNames = await fetchColumnNames("PATIENTS");
-
+  const columnTypes = await fetchColumnTypes("BOOKINGS");
+  const columnNames = await fetchColumnNames("BOOKINGS");
+  console.log(id, req.body);
   if (Object.keys(updates).length === 0) {
     return res.status(400).json({ error: "NO FIELDS TO UPDATE" });
   }
@@ -262,30 +266,31 @@ router.patch("/by-user/:id", authenticateToken, authorizeUser([userTables.admin]
   const request = pool.request();
 
   for (let field in updates) {
-    if (field === "USER_ID") {
+    if (field === "BOOKING_ID" || field === "PATIENT_ID" || field === "PROCEDURE_ID" ) {
       return res.status(403).json({ error: "FORBIDDEN" });
     }
-    if (field === "BLOOD_GROUP") {
-      updates[field] = updates[field].toUpperCase();
+    if(field === "BOOKING_STATUS")
+    {
+      updates[field] = updates[field].toLowerCase();
     }
     request.input(field, columnTypes[field], updates[field]);
     updateFields.push(`${field} = @${field}`);
   }
-  request.input("USER_ID", sql.Int, id);
+  request.input("BOOKING_ID", sql.Int, id);
 
-  const query = `UPDATE PATIENTS SET ${updateFields.join(
+  const query = `UPDATE BOOKINGS SET ${updateFields.join(
     ", "
-  )} WHERE USER_ID = @USER_ID`;
+  )} WHERE BOOKING_ID = @BOOKING_ID`;
 
   try {
     const result = await request.query(query);
     if (result.rowsAffected[0] === 0) {
-      return res.status(404).json({ error: "USER NOT FOUND" });
+      return res.status(404).json({ error: "BOOKING NOT FOUND" });
     }
 
     res
       .status(200)
-      .json({ message: `PATIENT WITH USER ID ${id} UPDATED SUCCESSFULLY` });
+      .json({ message: `BOOKING ${id} UPDATED SUCCESSFULLY` });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

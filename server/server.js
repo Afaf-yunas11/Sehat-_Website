@@ -20,7 +20,7 @@ import patientRoutes from "./src/routes/patientRoutes.js";
 import rescueWorkerRoutes from "./src/routes/rescueWorkerRoutes.js";
 import hospitalRoutes from "./src/routes/hospitalRoutes.js";
 import doctorRoutes from "./src/routes/doctorRoutes.js";
-import procedureRoutes from "./src/routes/patientRoutes.js"
+import procedureRoutes from "./src/routes/procedureRoutes.js"
 import procedureAssignmentRoutes from "./src/routes/procedureAssignmentRoutes.js";
 import bookingRoutes from "./src/routes/bookingRoutes.js";
 import branchRoutes from "./src/routes/branchRoutes.js";
@@ -34,7 +34,11 @@ const __dirname = path.dirname(__filename);
 const PORT = process.env.PORT;
 
 /* MIDDLEWARE */
-app.use(cors());
+app.use(cors({
+  origin: 'http://localhost:3000',
+  credentials: true
+}));
+
 app.use(express.json());
 app.use(cookieParser());
 

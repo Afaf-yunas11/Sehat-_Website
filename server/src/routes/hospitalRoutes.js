@@ -1,6 +1,6 @@
 import express from "express";
 import sql from "mssql";
-import {userTables } from "../config/userTables.js";
+import { userTables } from "../config/userTables.js";
 
 import authenticateToken from "../scripts/authenticateToken.js";
 import validateRequestBody from "../scripts/validateRequestBody.js";
@@ -13,7 +13,7 @@ const config = JSON.parse(process.env.CONFIG);
 
 //display all hospitals    this can be done my admin,doctor,patient
 
-router.get("/", authenticateToken, authorizeUser([userTables.admin,userTables.rescueWorker,userTables.patient,userTables.doctor], true),async (req, res) => {
+router.get("/", authenticateToken, authorizeUser([userTables.admin, userTables.rescueWorker, userTables.patient, userTables.doctor], true), async (req, res) => {
   try {
     const pool = await sql.connect(config);
     const result = await pool.request().query(
@@ -41,6 +41,54 @@ ON
     res.status(500).json({ error: error.message });
   }
 });
+
+router.get("/by-procedure-id/:id", authenticateToken, authorizeUser([userTables.admin, userTables.patient, userTables.doctor], false), async (req, res) => {
+  let id = parseInt(req.params.id);
+  if (!id) {
+    return res.status(400).json({ error: "PROCEDURE ID IS REQUIRED" });
+  }
+
+
+  try {
+    const pool = await sql.connect(config);
+    const result = await pool
+      .request()
+      .input("PROCEDURE_ID", sql.Int(100), id)
+      .query(`
+        SELECT DISTINCT
+          H.HOSPITAL_ID,
+          H.HOSPITAL_NAME,
+          B.BRANCH_ID,
+          B.LOCATION,
+          B.LATITUDE,
+          B.LONGITUDE,
+          B.PHONE_NO
+        FROM 
+          PROCEDURES P
+        INNER JOIN 
+          PROCEDURE_DOCTOR PD ON P.PROCEDURE_ID = PD.PROCEDURE_ID
+        INNER JOIN 
+          DOCTORS D ON PD.LICENSE_NO = D.LICENSE_NO
+        INNER JOIN
+          BRANCHES B ON D.BRANCH_ID = B.BRANCH_ID
+        INNER JOIN
+          HOSPITALS H ON B.HOSPITAL_ID = H.HOSPITAL_ID
+        WHERE 
+          P.PROCEDURE_ID = @PROCEDURE_ID
+        ORDER BY H.HOSPITAL_NAME, B.LOCATION;
+      `);
+
+    if (result.recordset.length === 0) {
+      return res.status(404).json({ error: "NO HOSPITALS FOUND FOR THIS PROCEDURE" });
+    }
+
+    res.status(200).json(result.recordset);
+  }
+  catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 
 router.post("/", authenticateToken, authorizeUser([userTables.admin], false), async (req, res) => {
   let { HOSPITAL_ID, HOSPITAL_NAME } = req.body;

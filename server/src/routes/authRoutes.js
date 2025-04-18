@@ -8,6 +8,7 @@ import jwt from "jsonwebtoken";
 import sha256 from "../scripts/sha256.js";
 import validateEmail from "../scripts/validateEmail.js";
 import { allowedTables } from "../config/userTables.js";
+import authenticateToken from "../scripts/authenticateToken.js";
 
 
 const router = express.Router();
@@ -68,16 +69,22 @@ router.post("/login", async (req, res) => {
 
     res.cookie("token", token,   //then in cookie we modifying token
     {
+      path: "/",
       httpOnly: true,
       secure: false,
       sameSite: "lax",
       maxAge: 3600 * 1000,
     });
 
-    res.status(200).json({ message: "LOGIN SUCCESSFUL" });
+    res.status(200).json({ message: "LOGIN SUCCESSFUL", userId: user.USER_ID });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
+});
+
+router.post("/logout", authenticateToken, (req, res) => {
+  res.clearCookie("token", { path: "/" });
+  res.status(200).json({ message: "LOGOUT SUCCESSFUL" });
 });
 
 export default router;

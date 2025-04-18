@@ -19,35 +19,15 @@ router.get(
   async (req, res) => {
     try {
       const pool = await sql.connect(config);
-      const result = await pool.request().query(`
+      const result = await pool.request().query(
+        `
         SELECT 
           P.PROCEDURE_ID,
-          P.PROCEDURE_COST,
           P.PROCEDURE_NAME,
-          P.PROCEDURE_DURATION,
-          U.F_NAME + ' ' + U.L_NAME AS DOCTOR_NAME,
-          H.HOSPITAL_NAME,
-          DS.SPECIALIZATION_NAME AS SPECIALIZATION,
-          D.RATING,
-          D.STATUS,
-          D.DATE_STARTED
-        FROM DOCTORS AS D
-        INNER JOIN (
-          SELECT 
-            P.PROCEDURE_ID,
-            PD.PROCEDURE_COST,
-            P.PROCEDURE_NAME,
-            P.PROCEDURE_DURATION,
-            PD.LICENSE_NO
-          FROM PROCEDURES AS P
-          INNER JOIN PROCEDURE_DOCTOR AS PD ON PD.PROCEDURE_ID = P.PROCEDURE_ID
-        ) AS P ON P.LICENSE_NO = D.LICENSE_NO
-        INNER JOIN USERS AS U ON D.USER_ID = U.USER_ID
-        INNER JOIN DOCTOR_SPECIALIZATIONS AS DS ON D.SPECIALIZATION = DS.SPECIALIZATION_ID
-        INNER JOIN BRANCHES AS B ON D.BRANCH_ID = B.BRANCH_ID
-        INNER JOIN HOSPITALS AS H ON B.HOSPITAL_ID = H.HOSPITAL_ID
-      `);
-
+          P.PROCEDURE_DURATION
+        FROM PROCEDURES AS P
+      `
+    );
       res.status(200).json(result.recordset);
     } catch (error) {
       res.status(500).json({ error: error.message });
@@ -74,7 +54,6 @@ router.get(
         .query(`
           SELECT 
             P.PROCEDURE_ID,
-            P.PROCEDURE_COST,
             P.PROCEDURE_NAME,
             P.PROCEDURE_DURATION,
             U.F_NAME + ' ' + U.L_NAME AS DOCTOR_NAME,

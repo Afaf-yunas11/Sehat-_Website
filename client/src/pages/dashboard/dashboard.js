@@ -231,7 +231,7 @@ const Dashboard = () => {
     if (!selectedProcedure) return;
     const fetchHospitalNames = async () => {
       try {
-        const response = await fetch(`http://localhost:8000/api/hospitals/by-procedure-name/${selectedProcedure}`, {
+        const response = await fetch(`http://localhost:8000/api/hospitals/by-procedure-id/${procedures[selectedProcedure].PROCEDURE_ID}`, {
           method: 'GET',
           credentials: 'include'
         });
@@ -577,15 +577,15 @@ const Dashboard = () => {
                   <select
                     className={`form-select border ${newFormValid.PROCEDURE_NAME ? 'border-primary' : 'border-danger'}`}
                     id="newProcedureName"
-                    value={newAppointment.PROCEDURE_NAME}
+                    value={selectedProcedure ?? ""} 
                     onChange={async e => {
-                      setNewAppointment({ ...newAppointment, PROCEDURE_NAME: e.target.value });
+                      setNewAppointment({ ...newAppointment, PROCEDURE_NAME: procedures[e.target.value].PROCEDURE_NAME });
                       setSelectedProcedure(e.target.value);
                     }}
                   >
                     <option value="">Select Procedure</option>
                     {procedures.map((procedure, idx) => (
-                      <option key={idx} value={procedure.PROCEDURE_NAME}>
+                      <option key={idx} value={idx}>
                         {procedure.PROCEDURE_NAME}
                       </option>
                     ))}
