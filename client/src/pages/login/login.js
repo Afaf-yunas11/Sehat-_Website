@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import SehatLogo from '../../assets/sehatLogo500.png';
 import ProceedButton from '../../components/proceedButton';
 import Alert from '../../components/alert';
-import './login.css';
+import styles from './login.module.css';
 
 const LoginForm = () => {
 
@@ -13,19 +13,16 @@ const LoginForm = () => {
 
   const handleLogin = async () => {
     const loginTypes = {
-      // eslint-disable-next-line
       ["user"]: "PATIENTS",
-      // eslint-disable-next-line
       ["doctor"]: "DOCTORS",
-      // eslint-disable-next-line
       ["admin"]: "ADMINS",
-      // eslint-disable-next-line
       ["rescue-worker"]: "RESCUE_WORKERS",
     };
 
     try {
       const response = await fetch('http://localhost:8000/api/auth/login', {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -35,7 +32,9 @@ const LoginForm = () => {
       if (response.ok) {
         const data = await response.json();
         console.log('Login successful:', data);
+        localStorage.setItem('userData', JSON.stringify(data));
         setAlertMessage('');
+        window.location.href = '/dashboard';
       } else {
         if (response.status === 404 || response.status === 401) {
           setAlertMessage('Invalid credentials');
@@ -51,24 +50,24 @@ const LoginForm = () => {
   };
 
   return (
-    <div className="login-container">
-      <div className="login-box">
-        <img src={SehatLogo} alt="Logo" className="logo" />
-        <h1>Trusted Care.<br></br> Anytime. Anywhere.</h1>
-        <p className="subtitle">Log in to your Sehat account</p>
-        <hr className="divider" />
-        <h3>I am a...</h3>
+    <div className={styles.loginContainer}>
+      <div className={styles.loginBox}>
+        <img src={SehatLogo} alt="Logo" className={styles.logo} />
+        <h1 className={styles.loginPageTitle}>Trusted Care.<br /> Anytime. Anywhere.</h1>
+        <p className={styles.subtitle}>Log in to your Sehat account</p>
+        <hr className={styles.divider} />
+        <p className={styles.subtitle}>I am a...</p>
         <select
-          className="role-dropdown"
+          className={styles.roleDropdown}
           value={role}
           onChange={(e) => setRole(e.target.value)}
-          >
+        >
           <option value="user">User</option>
           <option value="doctor">Doctor</option>
           <option value="admin">Admin</option>
           <option value="rescue-worker">Rescue Worker</option>
         </select>
-        <hr className="divider" />
+        <hr className={styles.divider} />
 
         {alertMessage && <Alert message={alertMessage} />}
 
@@ -77,20 +76,22 @@ const LoginForm = () => {
           placeholder="Enter your email address..."
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          />
+          className={styles.loginEmailInput}
+        />
         <input
           type="password"
           placeholder="Enter your password..."
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          />
+          className={styles.loginPasswordInput}
+        />
 
-        <ProceedButton onClick={handleLogin} label="Continue" margin='12px 0 16px 0'></ProceedButton>
+        <ProceedButton onClick={handleLogin} label="Continue" margin="12px 0 16px 0" />
 
-        <div className="small-text">
-          Forgot password? <a className="small-text" href="https://example.com">Click here</a>
-          <br></br>
-          Not a user? <a className="small-text" href="https://example.com">Create a free account</a>
+        <div className={styles.smallText}>
+          Forgot password? <a className={styles.smallText} href="https://example.com">Click here</a>
+          <br />
+          Not a user? <a className={styles.smallText} href="https://example.com">Create a free account</a>
         </div>
       </div>
     </div>
