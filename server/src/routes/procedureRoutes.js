@@ -31,7 +31,7 @@ router.get(
         WHERE LOWER(D.[STATUS]) IN ('active', 'on call')
         ORDER BY P.PROCEDURE_NAME;
       `
-    );
+      );
       res.status(200).json(result.recordset);
     } catch (error) {
       res.status(500).json({ error: error.message });
@@ -89,6 +89,41 @@ router.get(
       }
 
       res.status(200).json(result.recordset[0]);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+);
+
+// GET procedure cost by procedure ID and doctor license number (all roles allowed)
+router.get(
+  "/procedure-cost-by-procedure-and-license/:procedureId/:licenseNo",
+  authenticateToken,
+  authorizeUser([userTables.admin, userTables.doctor, userTables.patient, userTables.rescueWorker], false),
+  async (req, res) => {
+    const procedureId = parseInt(req.params.procedureId);
+    const licenseNo = req.params.licenseNo;
+
+    if (isNaN(procedureId) || !licenseNo) {
+      return res.status(400).json({ error: "INVALID PROCEDURE ID OR LICENSE NO" });
+    }
+
+    try {
+      const pool = await sql.connect(config);
+      const result = await pool
+        .request()
+        .input("PROCEDURE_ID", sql.Int, procedureId)
+        .input("LICENSE_NO", sql.VarChar(50), licenseNo)
+        .query(`
+          SELECT PROCEDURE_COST FROM PROCEDURE_DOCTOR
+          WHERE PROCEDURE_ID = @PROCEDURE_ID AND LICENSE_NO = @LICENSE_NO
+        `);
+
+      if (result.recordset.length === 0) {
+        return res.status(404).json({ error: "COST NOT FOUND" });
+      }
+
+      res.status(200).json({ procedureCost: result.recordset[0].PROCEDURE_COST });
     } catch (error) {
       res.status(500).json({ error: error.message });
     }

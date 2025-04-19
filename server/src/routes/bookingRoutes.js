@@ -112,8 +112,7 @@ router.get("/by-user/:id", authenticateToken, authorizeUser([userTables.admin], 
 router.post("/", authenticateToken, authorizeUser([userTables.admin, userTables.patient], false), async (req, res) => {
   try {
     let {
-      BOOKING_ID,
-      PATIENT_ID,
+      USER_ID,
       PROCEDURE_ID,
       LICENSE_NO,
       ROOM_ID,
@@ -122,22 +121,17 @@ router.post("/", authenticateToken, authorizeUser([userTables.admin, userTables.
       DURATION_OF_STAY,
       BOOKING_STATUS,
     } = req.body;
-
-    BOOKING_ID = parseInt(BOOKING_ID);
-    PATIENT_ID = parseInt(PATIENT_ID);
+    
+    DURATION_OF_STAY = parseInt(DURATION_OF_STAY);
+    LICENSE_NO = parseInt(LICENSE_NO);
     PROCEDURE_ID = parseInt(PROCEDURE_ID);
     ROOM_ID = parseInt(ROOM_ID);
-    DURATION_OF_STAY = parseInt(DURATION_OF_STAY);
-
-    const columnNames = await fetchColumnNames("BOOKINGS");
-    if (!validateRequestBody(req.body, columnNames)) {
-      return res.status(400).json({ error: "INVALID REQUEST BODY" });
-    }
+    USER_ID = parseInt(USER_ID);
+    console.log(req.body);
 
     if (
       !(
-        BOOKING_ID &&
-        PATIENT_ID &&
+        USER_ID &&
         PROCEDURE_ID &&
         LICENSE_NO &&
         ROOM_ID &&
@@ -159,9 +153,9 @@ router.post("/", authenticateToken, authorizeUser([userTables.admin, userTables.
     // 🔍 Check for same doctor, date, and time
     const duplicateDoctorBooking = await pool
       .request()
-      .input("LICENSE_NO", sql.VarChar(20), LICENSE_NO)
+      .input("LICENSE_NO", sql.Int, LICENSE_NO)
       .input("BOOKING_DATE", sql.Date, BOOKING_DATE)
-      .input("BOOKING_TIME", sql.Time, BOOKING_TIME)
+      .input("BOOKING_TIME", sql.VarChar(100), BOOKING_TIME)
       .query(
         `SELECT * FROM BOOKINGS 
          WHERE LICENSE_NO = @LICENSE_NO 
@@ -175,12 +169,11 @@ router.post("/", authenticateToken, authorizeUser([userTables.admin, userTables.
       });
     }
 
-    // 🔍 Check if the same room is booked at the same date and time
     const duplicateRoomBooking = await pool
       .request()
       .input("ROOM_ID", sql.Int, ROOM_ID)
       .input("BOOKING_DATE", sql.Date, BOOKING_DATE)
-      .input("BOOKING_TIME", sql.Time, BOOKING_TIME)
+      .input("BOOKING_TIME", sql.VarChar(100), BOOKING_TIME)
       .query(
         `SELECT * FROM BOOKINGS 
          WHERE ROOM_ID = @ROOM_ID 
@@ -194,25 +187,31 @@ router.post("/", authenticateToken, authorizeUser([userTables.admin, userTables.
       });
     }
 
-    // ✅ Insert booking if all checks pass
     const result = await pool
       .request()
-      .input("BOOKING_ID", sql.Int, BOOKING_ID)
-      .input("PATIENT_ID", sql.Int, PATIENT_ID)
+      .input("USER_ID", sql.Int, USER_ID)
       .input("PROCEDURE_ID", sql.Int, PROCEDURE_ID)
-      .input("LICENSE_NO", sql.VarChar(20), LICENSE_NO)
+      .input("LICENSE_NO", sql.Int, LICENSE_NO)
       .input("ROOM_ID", sql.Int, ROOM_ID)
       .input("BOOKING_DATE", sql.Date, BOOKING_DATE)
-      .input("BOOKING_TIME", sql.Time, BOOKING_TIME)
+      .input("BOOKING_TIME", sql.VarChar(100), BOOKING_TIME)
       .input("DURATION_OF_STAY", sql.Int, DURATION_OF_STAY)
       .input("BOOKING_STATUS", sql.VarChar(20), BOOKING_STATUS)
       .query(
         `
-        INSERT INTO BOOKINGS (BOOKING_ID, PATIENT_ID, PROCEDURE_ID, LICENSE_NO, ROOM_ID, BOOKING_DATE, BOOKING_TIME, DURATION_OF_STAY, BOOKING_STATUS)
-        VALUES (@BOOKING_ID, @PATIENT_ID, @PROCEDURE_ID, @LICENSE_NO, @ROOM_ID, @BOOKING_DATE, @BOOKING_TIME, @DURATION_OF_STAY, @BOOKING_STATUS)
+
+        DECLARE @PATIENT_ID INT;
+        
+        SELECT @PATIENT_ID = P.PATIENT_ID
+        FROM PATIENTS AS P
+        WHERE P.USER_ID = @USER_ID;
+
+        INSERT INTO BOOKINGS 
+        (PATIENT_ID, PROCEDURE_ID, LICENSE_NO, ROOM_ID, BOOKING_DATE, BOOKING_TIME, DURATION_OF_STAY, BOOKING_STATUS)
+        VALUES 
+        (@PATIENT_ID, @PROCEDURE_ID, @LICENSE_NO, @ROOM_ID, @BOOKING_DATE, @BOOKING_TIME, @DURATION_OF_STAY, @BOOKING_STATUS);
         `
       );
-
     res.status(201).json({ message: "BOOKING ADDED SUCCESSFULLY" });
   } catch (error) {
     res.status(500).json({ error: error.message });

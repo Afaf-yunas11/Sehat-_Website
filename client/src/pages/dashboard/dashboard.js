@@ -16,6 +16,12 @@ import toTitleCase from '../../utils/toTitleCase';
 import formatPhoneNumber from '../../utils/formatPhoneNumber';
 import Map from '../../components/map';
 
+import NewAppointmentModal from '../../components/newAppointmentModal';
+import AppointmentViewModal from '../../components/appointmentViewModal';
+import CancelAppointmentModal from '../../components/cancelAppointmentModal';
+import AppointmentTable from '../../components/appointmentTable';
+import AddAppointmentButton from '../../components/addAppointmentButton';
+import { sendGetRequest } from '../../utils/api';
 
 const Dashboard = () => {
   const [appointments, setAppointments] = useState([]);
@@ -32,51 +38,54 @@ const Dashboard = () => {
   const [hospitals, setHospitals] = useState([]);
   const [selectedHospitalIndex, setSelectedHospitalIndex] = useState(null);
   const [doctors, setDoctors] = useState([]);
+  const [selectedDoctorIndex, setSelectedDoctorIndex] = useState(null);
   const [rooms, setRooms] = useState([]); // Add this state at the top with other useStates
+  const [procedureCost, setProcedureCost] = useState(0);
+  const [selectedRoomIndex, setSelectedRoomIndex] = useState(null);
+
 
   const [newAppointment, setNewAppointment] = useState({
+    USER_ID: '',
+    PROCEDURE_ID: '',
+    LICENSE_NO: '',
+    ROOM_ID: '',
     BOOKING_DATE: '',
     BOOKING_TIME: '',
     DURATION_OF_STAY: '',
-    HOSPITAL_NAME: '',
-    PROCEDURE_NAME: '',
-    DOCTOR_NAME: '',
-    ROOM_TYPE: '',
-    PHONE_NO: ''
+    BOOKING_STATUS: 'scheduled'
   });
   const [newFormValid, setNewFormValid] = useState({
+    USER_ID: true,
+    PROCEDURE_ID: true,
+    LICENSE_NO: true,
+    ROOM_ID: true,
     BOOKING_DATE: true,
     BOOKING_TIME: true,
     DURATION_OF_STAY: true,
-    HOSPITAL_NAME: true,
-    PROCEDURE_NAME: true,
-    DOCTOR_NAME: true,
-    ROOM_TYPE: true,
-    PHONE_NO: true
+    BOOKING_STATUS: true
   });
 
   useEffect(() => {
     if (!showNewAppointmentModal) return;
+
     const today = new Date();
     const selectedDate = new Date(newAppointment.BOOKING_DATE);
     const isDateValid = newAppointment.BOOKING_DATE && selectedDate >= today.setHours(0, 0, 0, 0);
     const isTimeValid = !!newAppointment.BOOKING_TIME;
     const isDurationValid = !!newAppointment.DURATION_OF_STAY && Number(newAppointment.DURATION_OF_STAY) > 0;
-    const isHospitalValid = !!newAppointment.HOSPITAL_NAME?.trim();
-    const isProcedureValid = !!newAppointment.PROCEDURE_NAME?.trim();
-    const isDoctorValid = !!newAppointment.DOCTOR_NAME?.trim();
-    const isRoomValid = !!newAppointment.ROOM_TYPE?.trim();
-    const isPhoneValid = !!newAppointment.PHONE_NO?.trim();
+    const isProcedureIdValid = !!newAppointment.PROCEDURE_ID;
+    const isLicenseNoValid = !!newAppointment.LICENSE_NO;
+    const isRoomIdValid = !!newAppointment.ROOM_ID;
 
     setNewFormValid({
+      USER_ID: true,
+      PROCEDURE_ID: isProcedureIdValid,
+      LICENSE_NO: isLicenseNoValid,
+      ROOM_ID: isRoomIdValid,
       BOOKING_DATE: isDateValid,
       BOOKING_TIME: isTimeValid,
       DURATION_OF_STAY: isDurationValid,
-      HOSPITAL_NAME: isHospitalValid,
-      PROCEDURE_NAME: isProcedureValid,
-      DOCTOR_NAME: isDoctorValid,
-      ROOM_TYPE: isRoomValid,
-      PHONE_NO: isPhoneValid
+      BOOKING_STATUS: true, // Assuming BOOKING_STATUS is always valid
     });
   }, [newAppointment, showNewAppointmentModal]);
 
@@ -107,6 +116,16 @@ const Dashboard = () => {
     fetchUserInfo();
   }, []);
 
+  useEffect(() => {
+
+    if (selectedDoctorIndex === null || selectedRoomIndex === null) return;
+    if (selectedDoctorIndex < 0 || selectedRoomIndex < 0) return;
+    if (procedures[selectedProcedure] === undefined) return;
+    if (doctors[selectedDoctorIndex] === undefined) return;
+
+    sendGetRequest(`http://localhost:8000/api/procedures/procedure-cost-by-procedure-and-license/${procedures[selectedProcedure].PROCEDURE_ID}/${doctors[selectedDoctorIndex].LICENSE_NO}`, setProcedureCost);
+  }, [selectedDoctorIndex, selectedRoomIndex]);
+
   async function normalizeAppointments(appointments) {
     await appointments.map((appointments) => {
       appointments.BOOKING_DATE = new Date(appointments.BOOKING_DATE).toISOString().split('T')[0];
@@ -125,8 +144,14 @@ const Dashboard = () => {
     })
   }
 
+  async function normalizeRooms(rooms) {
+    rooms.forEach((room) => {
+      if (room.ROOM_TYPE) {
+        room.ROOM_TYPE = toTitleCase(room.ROOM_TYPE);
+      }
+    })
+  }
   async function normalizeHospitalNames(hospitals) {
-    console.log(hospitals);
     hospitals.forEach(hospital => {
       if (hospital.HOSPITAL_NAME) {
         hospital.HOSPITAL_NAME = toTitleCase(hospital.HOSPITAL_NAME);
@@ -137,29 +162,28 @@ const Dashboard = () => {
     });
   }
 
+  const fetchAppointments = async () => {
+    try {
+      const response = await fetch(`http://localhost:8000/api/bookings/by-user/${userInfo.USER_ID}`, {
+        method: 'GET',
+        credentials: 'include'
+      });
+      const data = await response.json();
+
+      if (response.status === 401) {
+        localStorage.removeItem('userData');
+        window.location.href = '/login';
+      }
+
+      await normalizeAppointments(data);
+      setAppointments(data);
+    } catch (error) {
+      console.error('Error fetching appointments:', error);
+    }
+  };
+
   useEffect(() => {
     if (!userInfo) return;
-
-    const fetchAppointments = async () => {
-      try {
-        const response = await fetch(`http://localhost:8000/api/bookings/by-user/${userInfo.USER_ID}`, {
-          method: 'GET',
-          credentials: 'include'
-        });
-        const data = await response.json();
-
-        if (response.status === 401) {
-          localStorage.removeItem('userData');
-          window.location.href = '/login';
-        }
-
-        await normalizeAppointments(data);
-        setAppointments(data);
-      } catch (error) {
-        console.error('Error fetching appointments:', error);
-      }
-    };
-
     fetchAppointments();
   }, [userInfo]);
 
@@ -210,8 +234,6 @@ const Dashboard = () => {
     }
   };
 
-
-
   useEffect(() => {
     // Only fetch if both a hospital and procedure are selected
     if (
@@ -248,6 +270,7 @@ const Dashboard = () => {
           return;
         }
         const data = await response.json();
+        normalizeRooms(data);
         setRooms(data);
       } catch (error) {
         console.error('Error fetching rooms:', error);
@@ -259,7 +282,6 @@ const Dashboard = () => {
   }, [selectedHospitalIndex, selectedProcedure, hospitals]);
 
   /* FETCHES ONLY HOSPITALS THAT CAN PERFORM A SPECIFIC PROCEDURE */
-
 
   useEffect(() => {
     if (!editMode) {
@@ -291,10 +313,8 @@ const Dashboard = () => {
           localStorage.removeItem('userData');
           window.location.href = '/login';
         }
-        console.log(data);
         await normalizeHospitalNames(data);
         setHospitals(data);
-        setNewAppointment({ ...newAppointment, HOSPITAL_NAME: data[0].HOSPITAL_NAME });
       } catch (error) {
         console.error('Error fetching hospitals:', error);
       }
@@ -340,454 +360,122 @@ const Dashboard = () => {
       <section>
         <div className="d-flex justify-content-between align-items-center mb-3">
           <h2 className="mb-0">Appointments</h2>
-          <Button
+          <AddAppointmentButton
             onClick={async () => {
               setShowNewAppointmentModal(true);
               await fetchProcedures();
-              console.log(procedures);
-            }
-            }
-          >Add +</Button>
+            }}
+          />
         </div>
-        <Table striped>
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Booking Date</th>
-              <th>Hospital Name</th>
-              <th>Procedure Name</th>
-              <th>Status</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {appointments.map((appointment, index) => (
-              <tr key={index}>
-                <td>{appointment.BOOKING_ID}</td>
-                <td>
-                  {(() => {
-                    const [year, month, day] = appointment.BOOKING_DATE.split('-');
-                    return `${day}/${month}/${year}`;
-                  })()}
-                </td>
-                <td>{appointment.HOSPITAL_NAME}</td>
-                <td>{appointment.PROCEDURE_NAME}</td>
-                <td>{appointment.BOOKING_STATUS}</td>
-                <td className="btn-group" role="group" aria-label="Basic mixed styles example">
-                  <button type="button" className="btn btn-success" onClick={() => { setEditMode(false); setShowViewModal(true); setAppointmentIndex(index); }}>View</button>
-                  <button type="button" className="btn btn-warning" onClick={() => { setEditMode(true); setShowViewModal(true); setAppointmentIndex(index); }} data-bs-toggle="modal" data-bs-target="#staticBackdrop" disabled={appointment.BOOKING_STATUS.toLowerCase() !== 'scheduled'} >Edit</button>
-                  <button type="button" className="btn btn-danger" onClick={() => { setShowModal(true); setAppointmentIndex(index); }} disabled={appointment.BOOKING_STATUS.toLowerCase() === 'cancelled'}>Cancel</button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </Table>
+        <AppointmentTable
+          appointments={appointments}
+          onView={index => {
+            setEditMode(false);
+            setShowViewModal(true);
+            setAppointmentIndex(index);
+          }}
+          onEdit={index => {
+            setEditMode(true);
+            setShowViewModal(true);
+            setAppointmentIndex(index);
+          }}
+          onCancel={index => {
+            setShowModal(true);
+            setAppointmentIndex(index);
+          }}
+        />
 
-        <Modal show={showModal} onHide={() => setShowModal(false)} backdrop="static" keyboard={false}>
-          <Modal.Header closeButton>
-            <Modal.Title>Cancel Appointment</Modal.Title>
-          </Modal.Header>
-          <Modal.Body>
-            Are you sure you want to cancel this appointment?
-            <br />
-            This action cannot be undone.
-          </Modal.Body>
-          <Modal.Footer>
-            <Button variant="secondary" onClick={() => setShowModal(false)}>
-              Close
-            </Button>
-            <Button variant="primary" onClick={() => { handleCancelAppointment(appointmentIndex); setShowModal(false) }}>
-              Cancel Appointment
-            </Button>
-          </Modal.Footer>
-        </Modal>
+        <CancelAppointmentModal
+          show={showModal}
+          onHide={() => setShowModal(false)}
+          onCancel={() => {
+            handleCancelAppointment(appointmentIndex);
+            setShowModal(false);
+          }}
+        />
 
-        <Modal show={showViewModal} onHide={() => { setShowViewModal(false); setEditMode(false); setAppointmentIndex(null) }} fullscreen>
-          <Modal.Header closeButton>
-            <Modal.Title>Appointment Details</Modal.Title>
-          </Modal.Header>
-          <Modal.Body>
-            {appointments[appointmentIndex] && (
-              <div className="row">
-                {/* Left: Details */}
-                <div className="col-md-7 border-end border-3 pe-3">
-                  <div className="row g-3">
-                    <div className="col-md-6">
-                      <div className="form-floating mb-3">
-                        <input type="text" className="form-control" id="bookingId" value={appointments[appointmentIndex].BOOKING_ID} disabled />
-                        <label htmlFor="bookingId">Booking ID</label>
-                      </div>
-                    </div>
-                    <div className="col-md-6">
-                      <div className="form-floating mb-3">
-                        {editMode ? (
-                          <input
-                            type="date"
-                            className={`form-control border ${formValid.BOOKING_DATE ? 'border-primary' : 'border-danger'}`}
-                            id="bookingDate"
-                            value={editAppointment.BOOKING_DATE || ''}
-                            disabled={!editMode}
-                            onChange={e => setEditAppointment({ ...editAppointment, BOOKING_DATE: e.target.value })}
-                          />
-                        ) : (
-                          <input
-                            type="date"
-                            className="form-control"
-                            id="bookingDate"
-                            value={appointments[appointmentIndex].BOOKING_DATE}
-                            disabled
-                          />
-                        )}
-                        <label htmlFor="bookingDate">Booking Date</label>
-                      </div>
-                    </div>
-                    <div className="col-md-6">
-                      <div className="form-floating mb-3">
-                        {editMode ? (
-                          <input
-                            type="time"
-                            className={`form-control border ${formValid.BOOKING_TIME ? 'border-primary' : 'border-danger'}`}
-                            id="bookingTime"
-                            value={editAppointment.BOOKING_TIME || ''}
-                            disabled={!editMode}
-                            onChange={e => setEditAppointment({ ...editAppointment, BOOKING_TIME: e.target.value })}
-                          />
-                        ) : (
-                          <input
-                            type="time"
-                            className="form-control"
-                            id="bookingTime"
-                            value={appointments[appointmentIndex].BOOKING_TIME}
-                            disabled
-                          />
-                        )}
-                        <label htmlFor="bookingTime">Booking Time</label>
-                      </div>
-                    </div>
-                    <div className="col-md-6">
-                      <div className="form-floating mb-3">
-                        <input type="text" className="form-control" id="bookingStatus" value={appointments[appointmentIndex].BOOKING_STATUS} disabled />
-                        <label htmlFor="bookingStatus">Status</label>
-                      </div>
-                    </div>
-                    <div className="col-md-6">
-                      <div className="form-floating mb-3">
-                        <input type="text" className="form-control" id="doctorName" value={appointments[appointmentIndex].DOCTOR_NAME} disabled />
-                        <label htmlFor="doctorName">Doctor Name</label>
-                      </div>
-                    </div>
-                    <div className="col-md-6">
-                      <div className="form-floating mb-3">
-                        <input type="text" className="form-control" id="procedureName" value={appointments[appointmentIndex].PROCEDURE_NAME} disabled />
-                        <label htmlFor="procedureName">Procedure Name</label>
-                      </div>
-                    </div>
-                    <div className="col-md-6">
-                      <div className="form-floating mb-3">
-                        <input type="text" className="form-control" id="procedureDuration" value={appointments[appointmentIndex].PROCEDURE_DURATION + " minutes"} disabled />
-                        <label htmlFor="procedureDuration">Procedure Duration</label>
-                      </div>
-                    </div>
-                    <div className="col-md-6">
-                      <div className="form-floating mb-3">
-                        <input type="text" className="form-control" id="roomType" value={appointments[appointmentIndex].ROOM_TYPE} disabled />
-                        <label htmlFor="roomType">Room Type</label>
-                      </div>
-                    </div>
-                    <div className="col-md-6">
-                      <div className="form-floating mb-3">
-                        {editMode ? (
-                          <input
-                            type="number"
-                            className={`form-control border ${formValid.DURATION_OF_STAY ? 'border-primary' : 'border-danger'}`}
-                            id="durationOfStay"
-                            min="1"
-                            value={editAppointment.DURATION_OF_STAY || ''}
-                            disabled={!editMode}
-                            onChange={
-                              e => {
-                                setEditAppointment({
-                                  ...editAppointment, DURATION_OF_STAY: e.target.value
+        <AppointmentViewModal
+          show={showViewModal}
+          onHide={() => setShowViewModal(false)}
+          appointment={appointments[appointmentIndex]}
+          editAppointment={editAppointment}
+          setEditAppointment={setEditAppointment}
+          editMode={editMode}
+          setEditMode={setEditMode}
+          formValid={formValid}
+          setAppointmentIndex={setAppointmentIndex}
+          onSave={async () => {
+            const response = await fetch(`http://localhost:8000/api/bookings/by-booking/${appointments[appointmentIndex].BOOKING_ID}`, {
+              method: 'PATCH',
+              credentials: 'include',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                BOOKING_DATE: editAppointment.BOOKING_DATE,
+                BOOKING_TIME: editAppointment.BOOKING_TIME,
+                DURATION_OF_STAY: editAppointment.DURATION_OF_STAY
+              })
+            });
+            if (response.ok) {
+              const updatedAppointments = appointments.map((appt, i) =>
+                i === appointmentIndex ? { ...appt, ...editAppointment } : appt
+              );
+              setAppointments(updatedAppointments);
+              setShowViewModal(false);
+            } else {
+              console.error('Error updating appointment:', response.statusText);
+            }
+          }}
+        />
 
-                                })
-                              }}
-                          />
-                        ) : (
-                          <input
-                            type="text"
-                            className="form-control"
-                            id="durationOfStay"
-                            value={appointments[appointmentIndex].DURATION_OF_STAY + " day(s)"}
-                            disabled
-                          />
-                        )}
-                        <label htmlFor="durationOfStay">Duration of Stay</label>
-                      </div>
-                    </div>
-                    <div className="col-md-6">
-                      <div className="form-floating mb-3">
-                        <input type="text" className="form-control" id="phoneNo" value={appointments[appointmentIndex].PHONE_NO} disabled />
-                        <label htmlFor="phoneNo">Phone No</label>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                {/* Right: Map and Hospital Info */}
-                <div className="col-md-5 d-flex flex-column align-items-center">
-                  <Map
-                    containerStyle={{ width: "100%", height: "300px" }}
-                    center={{
-                      lat: appointments[appointmentIndex].LATITUDE,
-                      lng: appointments[appointmentIndex].LONGITUDE
-                    }}
-                    zoom={12}
-                  />
-                  <div className="w-100 mt-3">
-                    <div className="form-floating mb-3">
-                      <input type="text" className="form-control" id="hospitalName" value={appointments[appointmentIndex].HOSPITAL_NAME} disabled />
-                      <label htmlFor="hospitalName">Hospital Name</label>
-                    </div>
-                    <div className="form-floating mb-3">
-                      <input type="text" className="form-control" id="branchLocation" value={appointments[appointmentIndex].BRANCH_LOCATION} disabled />
-                      <label htmlFor="branchLocation">Branch Location</label>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </Modal.Body>
-          <Modal.Footer>
-            <Button variant="secondary" onClick={() => { setShowViewModal(false); setEditMode(false); setAppointmentIndex(null); }}>
-              Close
-            </Button>
-            {editMode && (
-              <Button variant="primary" disabled={!(formValid.BOOKING_DATE === true && formValid.BOOKING_TIME === true && formValid.DURATION_OF_STAY === true)} onClick={async () => {
-                const response = await fetch(`http://localhost:8000/api/bookings/by-booking/${appointments[appointmentIndex].BOOKING_ID}`, {
-                  method: 'PATCH',
-                  credentials: 'include',
-                  headers: {
-                    'Content-Type': 'application/json'
-                  },
-                  body: JSON.stringify({ BOOKING_DATE: editAppointment.BOOKING_DATE, BOOKING_TIME: editAppointment.BOOKING_TIME, DURATION_OF_STAY: editAppointment.DURATION_OF_STAY })
-                });
-                if (response.ok) {
-                  const updatedAppointments = appointments.map((appt, i) =>
-                    i === appointmentIndex ? { ...appt, ...editAppointment } : appt
-                  );
-                  setAppointments(updatedAppointments);
-                  setShowViewModal(false);
-                }
-                else {
-                  console.error('Error updating appointment:', response.statusText);
-                }
-
-                console.log({ BOOKING_DATE: editAppointment.BOOKING_DATE, BOOKING_TIME: editAppointment.BOOKING_TIME, DURATION_OF_STAY: editAppointment.DURATION_OF_STAY });
-              }}>
-                Save Changes
-              </Button>
-            )}
-          </Modal.Footer>
-        </Modal>
-
-        <Modal show={showNewAppointmentModal} onHide={() => setShowNewAppointmentModal(false)} fullscreen>
-          <Modal.Header closeButton>
-            <Modal.Title>Book New Appointment</Modal.Title>
-          </Modal.Header>
-          <Modal.Body>
-            <div className="row g-3">
-              <div className="col-md-6">
-                <div className="form-floating mb-3">
-                  <input
-                    type="date"
-                    className={`form-control border ${newFormValid.BOOKING_DATE ? 'border-primary' : 'border-danger'}`}
-                    id="newBookingDate"
-                    min={new Date().toISOString().split('T')[0]}
-                    value={newAppointment.BOOKING_DATE}
-                    onChange={e => setNewAppointment({ ...newAppointment, BOOKING_DATE: e.target.value })}
-                  />
-                  <label htmlFor="newBookingDate">Booking Date</label>
-                </div>
-              </div>
-              <div className="col-md-6">
-                <div className="form-floating mb-3">
-                  <input
-                    type="time"
-                    className={`form-control border ${newFormValid.BOOKING_TIME ? 'border-primary' : 'border-danger'}`}
-                    id="newBookingTime"
-                    value={newAppointment.BOOKING_TIME}
-                    onChange={e => setNewAppointment({ ...newAppointment, BOOKING_TIME: e.target.value })}
-                  />
-                  <label htmlFor="newBookingTime">Booking Time</label>
-                </div>
-              </div>
-              <div className="col-md-6">
-                <div className="form-floating mb-3">
-                  <input
-                    type="number"
-                    min="1"
-                    className={`form-control border ${newFormValid.DURATION_OF_STAY ? 'border-primary' : 'border-danger'}`}
-                    id="newDurationOfStay"
-                    value={newAppointment.DURATION_OF_STAY}
-                    onChange={e => setNewAppointment({ ...newAppointment, DURATION_OF_STAY: e.target.value })}
-                  />
-                  <label htmlFor="newDurationOfStay">Duration of Stay (days)</label>
-                </div>
-              </div>
-              <div className="col-md-6">
-                <div className="form-floating mb-3">
-                  <select
-                    className={`form-select border ${newFormValid.HOSPITAL_NAME ? 'border-primary' : 'border-danger'}`}
-                    id="newHospitalName"
-                    value={selectedHospitalIndex ?? ""}
-                    disabled={!newFormValid.PROCEDURE_NAME}
-                    onChange={e => {
-                      if (e.target.value === "") {
-                        setNewAppointment({ ...newAppointment, HOSPITAL_NAME: "", ROOM_TYPE: "" });
-                        setSelectedHospitalIndex(null);
-                        setRooms([]);
-                      } else {
-                        setNewAppointment({ ...newAppointment, HOSPITAL_NAME: hospitals[e.target.value]?.HOSPITAL_NAME || "", ROOM_TYPE: "" });
-                        setSelectedHospitalIndex(Number(e.target.value));
-                        setRooms([]);
-                      }
-                    }}
-                  >
-                    <option value="">Select Hospital</option>
-                    {
-                      (hospitals || []).map((hospital, idx) => (
-                        <option key={idx} value={idx}>
-                          {`${hospital.HOSPITAL_NAME} - ${hospital.LOCATION}`}
-                        </option>
-                      ))
-                    }
-                  </select>
-                  <label htmlFor="newHospitalName">Hospital Name</label>
-                </div>
-              </div>
-              <div className="col-md-6">
-                <div className="form-floating mb-3">
-                  <select
-                    className={`form-select border ${newFormValid.PROCEDURE_NAME ? 'border-primary' : 'border-danger'}`}
-                    id="newProcedureName"
-                    value={selectedProcedure ?? -1}
-                    onChange={async e => {
-                      const idx = Number(e.target.value);
-                      if (idx < 0) {
-                        setSelectedProcedure(null);
-                        setNewAppointment({ ...newAppointment, PROCEDURE_NAME: "", HOSPITAL_NAME: "", DOCTOR_NAME: "", ROOM_TYPE: "" });
-                        setSelectedHospitalIndex(null);
-                        setDoctors([]);
-                        setRooms([]);
-                        return;
-                      }
-                      setNewAppointment({ ...newAppointment, PROCEDURE_NAME: procedures[idx].PROCEDURE_NAME, HOSPITAL_NAME: "", DOCTOR_NAME: "", ROOM_TYPE: "" });
-                      setSelectedProcedure(idx);
-                      setSelectedHospitalIndex(null);
-                      setDoctors([]);
-                      setRooms([]);
-                    }}
-                  >
-                    <option value={-1}>Select Procedure</option>
-                    {procedures.map((procedure, idx) => (
-                      <option key={idx} value={idx}>
-                        {procedure.PROCEDURE_NAME}
-                      </option>
-                    ))}
-                  </select>
-                  <label htmlFor="newProcedureName">Procedure Name</label>
-                </div>
-              </div>
-              <div className="col-md-6">
-                <div className="form-floating mb-3">
-                  <select
-                    className={`form-select border ${newFormValid.DOCTOR_NAME ? 'border-primary' : 'border-danger'}`}
-                    id="newDoctorName"
-                    value={newAppointment.DOCTOR_NAME}
-                    onChange={e => setNewAppointment({ ...newAppointment, DOCTOR_NAME: e.target.value })}
-                    disabled={!doctors || doctors.length === 0}
-                  >
-                    <option value="">Select Doctor</option>
-                    {doctors && doctors.map((doctor, idx) => (
-                      <option key={idx} value={doctor.DOCTOR_NAME}>
-                        {`Dr. ${doctor.F_NAME} ${doctor.L_NAME}`}
-                      </option>
-                    ))}
-                  </select>
-                  <label htmlFor="newDoctorName">Doctor Name</label>
-                </div>
-              </div>
-              <div className="col-md-6">
-                <div className="form-floating mb-3">
-                  <select
-                    className={`form-select border ${newFormValid.ROOM_TYPE ? 'border-primary' : 'border-danger'}`}
-                    id="newRoomType"
-                    value={newAppointment.ROOM_TYPE}
-                    onChange={e => setNewAppointment({ ...newAppointment, ROOM_TYPE: e.target.value })}
-                    disabled={!rooms || rooms.length === 0}
-                  >
-                    <option value="">Select Room</option>
-                    {rooms && rooms.map((room, idx) => (
-                      <option key={room.ROOM_ID} value={room.ROOM_TYPE}>
-                        {`${room.ROOM_TYPE} (Max: ${room.MAX_OCCUPANCY}, $${room.ROOM_COST_PER_NIGHT}/night)`}
-                      </option>
-                    ))}
-                  </select>
-                  <label htmlFor="newRoomType">Room Type</label>
-                </div>
-              </div>
-              <div className="col-md-6">
-                <div className="form-floating mb-3">
-                  <input
-                    type="text"
-                    className={`form-control border ${newFormValid.PHONE_NO ? 'border-primary' : 'border-danger'}`}
-                    id="newPhoneNo"
-                    value={newAppointment.PHONE_NO}
-                    onChange={e => setNewAppointment({ ...newAppointment, PHONE_NO: e.target.value })}
-                  />
-                  <label htmlFor="newPhoneNo">Phone No</label>
-                </div>
-              </div>
-            </div>
-          </Modal.Body>
-          <Modal.Footer>
-            <Button variant="secondary" onClick={() => setShowNewAppointmentModal(false)}>
-              Cancel
-            </Button>
-            <Button
-              variant="primary"
-              disabled={!isNewFormAllValid}
-              onClick={async () => {
-                // Example: POST to your backend
-                const response = await fetch('http://localhost:8000/api/bookings', {
-                  method: 'POST',
-                  credentials: 'include',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify(newAppointment)
-                });
-                if (response.ok) {
-                  setShowNewAppointmentModal(false);
-                  setNewAppointment({
-                    BOOKING_DATE: '',
-                    BOOKING_TIME: '',
-                    DURATION_OF_STAY: '',
-                    HOSPITAL_NAME: '',
-                    PROCEDURE_NAME: '',
-                    DOCTOR_NAME: '',
-                    ROOM_TYPE: '',
-                    PHONE_NO: ''
-                  });
-                  // Optionally refresh appointments
-                  // fetchAppointments();
-                } else {
-                  // Handle error
-                  alert('Failed to book appointment');
-                }
-              }}
-            >
-              Book Appointment
-            </Button>
-          </Modal.Footer>
-        </Modal>
+        <NewAppointmentModal
+          show={showNewAppointmentModal}
+          onHide={() => setShowNewAppointmentModal(false)}
+          newAppointment={newAppointment}
+          setNewAppointment={setNewAppointment}
+          newFormValid={newFormValid}
+          isNewFormAllValid={isNewFormAllValid}
+          onBook={async () => {
+            const response = await fetch('http://localhost:8000/api/bookings', {
+              method: 'POST',
+              credentials: 'include',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(newAppointment)
+            });
+            if (response.ok) {
+              setShowNewAppointmentModal(false);
+              setNewAppointment({
+                USER_ID: '',
+                PROCEDURE_ID: '',
+                LICENSE_NO: '',
+                ROOM_ID: '',
+                BOOKING_DATE: '',
+                BOOKING_TIME: '',
+                DURATION_OF_STAY: '',
+                BOOKING_STATUS: 'scheduled'
+              });
+              if (!userInfo) return
+              fetchAppointments();
+            } else {
+              alert('Failed to book appointment');
+            }
+          }}
+          hospitals={hospitals}
+          selectedHospitalIndex={selectedHospitalIndex}
+          setSelectedHospitalIndex={setSelectedHospitalIndex}
+          setRooms={setRooms}
+          procedures={procedures}
+          selectedProcedure={selectedProcedure}
+          setSelectedProcedure={setSelectedProcedure}
+          procedureCost={procedureCost}
+          setProcedureCost={setProcedureCost}
+          setDoctors={setDoctors}
+          doctors={doctors}
+          selectedDoctorIndex={selectedDoctorIndex}
+          setSelectedDoctorIndex={setSelectedDoctorIndex}
+          rooms={rooms}
+          selectedRoomIndex={selectedRoomIndex}
+          setSelectedRoomIndex={setSelectedRoomIndex}
+        />
       </section>
     </>
   );
