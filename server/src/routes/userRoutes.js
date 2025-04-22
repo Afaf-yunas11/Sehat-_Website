@@ -58,13 +58,13 @@ router.get("/:id", authenticateToken, authorizeUser([userTables.admin], true), a
 
 router.post("/", async (req, res) => {
   try {
-    let { F_NAME, L_NAME, EMAIL, PASSWORD, DOB, GENDER } = req.body;
+    let { F_NAME, L_NAME, EMAIL, PASSWORD, DOB, GENDER, ACCOUNT_STATUS} = req.body;
     const columnNames = await fetchColumnNames("USERS");
 
     if (!validateRequestBody(req.body, columnNames)) {
       return res.status(400).json({ error: "INVALID REQUEST BODY" });
     }
-    if (!(F_NAME && L_NAME && EMAIL && PASSWORD && DOB && GENDER)) {
+    if (!(F_NAME && L_NAME && EMAIL && PASSWORD && DOB && GENDER && ACCOUNT_STATUS)) {
       return res.status(400).json({ error: "ALL FIELDS ARE REQUIRED" });
     }
     if (!validateEmail(EMAIL)) {
@@ -85,11 +85,12 @@ router.post("/", async (req, res) => {
       .input("PASSWORD", sql.VarChar(100), PASSWORD)
       .input("DOB", sql.Date, DOB)
       .input("GENDER", sql.VarChar(6), GENDER)
+      .input("ACCOUNT_STATUS", sql.VarChar(10), ACCOUNT_STATUS)
       .query(
         `
-        INSERT INTO USERS (F_NAME, L_NAME, EMAIL, PASSWORD, DOB, GENDER)
+        INSERT INTO USERS (F_NAME, L_NAME, EMAIL, PASSWORD, DOB, GENDER, ACCOUNT_STATUS)
         VALUES
-        (@F_NAME, @L_NAME, @EMAIL, @PASSWORD, @DOB, @GENDER);
+        (@F_NAME, @L_NAME, @EMAIL, @PASSWORD, @DOB, @GENDER, @ACCOUNT_STATUS);
         `
       );
 

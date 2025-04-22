@@ -3,6 +3,8 @@ import SehatLogo from '../../assets/sehatLogo500.png';
 import ProceedButton from '../../components/proceedButton';
 import Alert from '../../components/alert';
 import styles from './login.module.css';
+import routes from '../../routes/routes';
+import PasswordToggleInput from '../../components/passwordToggleInput';
 
 const LoginForm = () => {
 
@@ -10,6 +12,7 @@ const LoginForm = () => {
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('user');
   const [alertMessage, setAlertMessage] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleLogin = async () => {
     const loginTypes = {
@@ -71,27 +74,31 @@ const LoginForm = () => {
 
         {alertMessage && <Alert message={alertMessage} />}
 
-        <input
-          type="email"
-          placeholder="Enter your email address..."
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className={styles.loginEmailInput}
-        />
-        <input
-          type="password"
-          placeholder="Enter your password..."
+        <div className="form-floating mb-3">
+          <input
+            type="email"
+            className="form-control"
+            id="email"
+            name="EMAIL"
+            placeholder="EMAIL"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+          <label htmlFor="email">Email</label>
+        </div>
+
+        <PasswordToggleInput
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className={styles.loginPasswordInput}
+          showPassword={showPassword}
+          setShowPassword={setShowPassword}
         />
 
         <ProceedButton onClick={handleLogin} label="Continue" margin="12px 0 16px 0" />
 
         <div className={styles.smallText}>
-          Forgot password? <a className={styles.smallText} href="https://example.com">Click here</a>
-          <br />
-          Not a user? <a className={styles.smallText} href="https://example.com">Create a free account</a>
+          Not a user? <a className={styles.smallText} href={routes.register}>Create a free account</a>
         </div>
       </div>
     </div>

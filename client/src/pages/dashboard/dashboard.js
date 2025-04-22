@@ -10,6 +10,7 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 
 import Modal from 'react-bootstrap/Modal';
 import Button from 'react-bootstrap/Button';
+import Spinner from 'react-bootstrap/Spinner'
 
 import toSentenceCase from '../../utils/toSentenceCase';
 import toTitleCase from '../../utils/toTitleCase';
@@ -22,9 +23,12 @@ import CancelAppointmentModal from '../../components/cancelAppointmentModal';
 import AppointmentTable from '../../components/appointmentTable';
 import AddAppointmentButton from '../../components/addAppointmentButton';
 import { sendGetRequest } from '../../utils/api';
+import AppointmentConfirmationModal from '../../components/appointmentConfirmationModal';
+import DashboardHeader from '../../components/dashboardHeader';
+import SpinnerComponent from '../../components/spinnerComponent';
 
 const Dashboard = () => {
-  const [appointments, setAppointments] = useState([]);
+  const [appointments, setAppointments] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [showNewAppointmentModal, setShowNewAppointmentModal] = useState(false);
@@ -42,6 +46,7 @@ const Dashboard = () => {
   const [rooms, setRooms] = useState([]); // Add this state at the top with other useStates
   const [procedureCost, setProcedureCost] = useState(0);
   const [selectedRoomIndex, setSelectedRoomIndex] = useState(null);
+  const [showConfirmation, setShowConfirmation] = useState(false);
 
 
   const [newAppointment, setNewAppointment] = useState({
@@ -179,8 +184,11 @@ const Dashboard = () => {
       setAppointments(data);
     } catch (error) {
       console.error('Error fetching appointments:', error);
+      setAppointments([]);
     }
   };
+
+
 
   useEffect(() => {
     if (!userInfo) return;
@@ -354,19 +362,24 @@ const Dashboard = () => {
     fetchDoctorsByProcedureAndHospital(procedures[selectedProcedure].PROCEDURE_ID, hospitals[selectedHospitalIndex].BRANCH_ID);
   }, [selectedHospitalIndex, selectedProcedure]);
 
+  if (appointments === null|| !userInfo ) return (
+    <SpinnerComponent />
+  );
+
   return (
     <>
       <Header firstName={userInfo ? userInfo.F_NAME : 'User'} />
-      <section>
-        <div className="d-flex justify-content-between align-items-center mb-3">
-          <h2 className="mb-0">Appointments</h2>
-          <AddAppointmentButton
-            onClick={async () => {
-              setShowNewAppointmentModal(true);
-              await fetchProcedures();
-            }}
-          />
-        </div>
+      <section className="container-fluid mt-0">
+        <DashboardHeader
+          showAppointmentButton={true}
+          onAddAppointment={() => {
+            setShowNewAppointmentModal(true)
+            fetchProcedures();
+          }}
+          heading="Appointments"
+          body="Your past and upcoming appointments at a glance"
+
+        />
         <AppointmentTable
           appointments={appointments}
           onView={index => {
@@ -443,6 +456,7 @@ const Dashboard = () => {
             });
             if (response.ok) {
               setShowNewAppointmentModal(false);
+              setShowConfirmation(true);
               setNewAppointment({
                 USER_ID: '',
                 PROCEDURE_ID: '',
@@ -475,6 +489,15 @@ const Dashboard = () => {
           rooms={rooms}
           selectedRoomIndex={selectedRoomIndex}
           setSelectedRoomIndex={setSelectedRoomIndex}
+        />
+
+        <AppointmentConfirmationModal
+          show={showConfirmation}
+          onClose={() => setShowConfirmation(false)}
+          onGoToDashboard={() => {
+            setShowConfirmation(false);
+            setShowNewAppointmentModal(false);
+          }}
         />
       </section>
     </>

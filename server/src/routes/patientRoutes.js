@@ -26,7 +26,7 @@ router.get("/", authenticateToken, authorizeUser([userTables.admin, userTables.d
   }
 });
 
-router.get("/by-user/:id", authorizeUser([userTables.admin, userTables.doctor, userTables.rescueWorker], true), async (req, res) => {
+router.get("/by-user/:id",authenticateToken ,authorizeUser([userTables.admin, userTables.doctor, userTables.rescueWorker], true), async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const pool = await sql.connect(config);
@@ -54,9 +54,10 @@ router.get("/by-user/:id", authorizeUser([userTables.admin, userTables.doctor, u
   }
 });
 
-router.post("/", authorizeUser([userTables.admin, userTables.patient], false), async (req, res) => {
+router.post("/", async (req, res) => {
   try {
     let { USER_ID, BLOOD_GROUP, WEIGHT, HEIGHT, ADDRESS } = req.body;
+
     USER_ID = parseInt(USER_ID);
     WEIGHT = parseInt(WEIGHT);
     HEIGHT = parseInt(HEIGHT);
@@ -87,8 +88,7 @@ router.post("/", authorizeUser([userTables.admin, userTables.patient], false), a
       VALUES 
       (@USER_ID, @BLOOD_GROUP, @WEIGHT, @HEIGHT, @ADDRESS)
       `
-      );
-
+    );
     const userIDResult = await pool
       .request()
       .input("USER_ID", sql.Int, USER_ID)

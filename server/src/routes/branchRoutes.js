@@ -22,6 +22,23 @@ router.get("/", authenticateToken, async (req, res) => {
   }
 });
 
+router.get("/condensed", async (req, res) => {
+  try {
+    const pool = await sql.connect(config);
+    const result = await pool.request().query(`
+      SELECT 
+        B.BRANCH_ID, 
+        B.LOCATION, 
+        H.HOSPITAL_NAME
+      FROM BRANCHES B
+      JOIN HOSPITALS H ON B.HOSPITAL_ID = H.HOSPITAL_ID
+    `);
+    res.status(200).json(result.recordset);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Get specific branch by ID
 router.get("/:id", authenticateToken, async (req, res) => {
   const id = parseInt(req.params.id);

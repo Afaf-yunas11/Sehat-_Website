@@ -26,6 +26,7 @@ import bookingRoutes from "./src/routes/bookingRoutes.js";
 import branchRoutes from "./src/routes/branchRoutes.js";
 import transactionRoutes from "./src/routes/transactionRoutes.js";
 import roomRoutes from "./src/routes/roomRoutes.js";
+import specializationRoutes from "./src/routes/specializationRoutes.js";
 
 
 const app = express();
@@ -55,6 +56,7 @@ app.use("/api/procedure-assingment",procedureAssignmentRoutes);
 app.use("/api/branch",branchRoutes);
 app.use("/api/transactions", transactionRoutes);
 app.use("/api/rooms", roomRoutes);
+app.use("/api/specializations", specializationRoutes);
 
 
 /* SERVE STATIC FILES */

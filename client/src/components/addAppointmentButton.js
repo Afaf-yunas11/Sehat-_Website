@@ -2,8 +2,11 @@ import React from 'react';
 import Button from 'react-bootstrap/Button';
 
 const AddAppointmentButton = ({ onClick }) => (
-  <Button onClick={onClick}>
-    Add +
+  <Button
+    onClick={onClick}
+    style={{ minWidth: '180px' }}
+  >
+    Add Appointment
   </Button>
 );
 

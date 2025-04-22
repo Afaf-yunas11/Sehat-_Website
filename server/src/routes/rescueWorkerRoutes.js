@@ -72,12 +72,6 @@ router.post("/", async (req, res) => {
 
     const columnNames = await fetchColumnNames("RESCUE_WORKERS");
 
-    if (
-      !authorizeUser(req, res, [userTables.admin, userTables.rescueWorker], false)
-    ) {
-      return res.status(403).json({ error: "FORBIDDEN" });
-    }
-
     if (!validateRequestBody(req.body, columnNames)) {
       return res.status(400).json({ error: "INVALID REQUEST BODY" });
     }

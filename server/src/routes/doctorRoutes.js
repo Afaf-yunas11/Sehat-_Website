@@ -79,7 +79,7 @@ router.get("/by-branch-and-procedure/:branchId/:procedureId", authenticateToken,
         INNER JOIN PROCEDURES AS P ON PD.PROCEDURE_ID = P.PROCEDURE_ID
         INNER JOIN BRANCHES AS B ON D.BRANCH_ID = B.BRANCH_ID
         INNER JOIN HOSPITALS AS H ON B.HOSPITAL_ID = H.HOSPITAL_ID
-        INNER JOIN DOCTOR_SPECIALIZATIONS AS DS ON D.SPECIALIZATION = DS.SPECIALIZATION_ID
+        INNER JOIN DOCTOR_SPECIALIZATIONS AS DS ON D.SPECIALIZATION_ID = DS.SPECIALIZATION_ID
         WHERE P.PROCEDURE_ID = @PROCEDURE_ID
         AND B.BRANCH_ID = @BRANCH_ID
         AND LOWER(STATUS) IN ('active', 'on call')
@@ -92,23 +92,31 @@ router.get("/by-branch-and-procedure/:branchId/:procedureId", authenticateToken,
 })
 
 // POST add new doctor
-router.post("/", authenticateToken, authorizeUser([userTables.admin], false), async (req, res) => {
-  const { LICENSE_NO, BRANCH_ID, USER_ID, SPECIALIZATION, STATUS, DATE_STARTED, RATING } = req.body;
+router.post("/", async (req, res) => {
+  let { LICENSE_NO, BRANCH_ID, USER_ID, SPECIALIZATION_ID, STATUS, DATE_STARTED, RATING } = req.body;
 
-  if (!(LICENSE_NO && BRANCH_ID && USER_ID && SPECIALIZATION && STATUS)) {
+  if (!(LICENSE_NO && BRANCH_ID && USER_ID && SPECIALIZATION_ID && STATUS)) {
     return res.status(400).json({ error: "ALL FIELDS EXCEPT DATE_STARTED AND RATING ARE REQUIRED" });
+  }
+
+  LICENSE_NO = parseInt(LICENSE_NO);
+  BRANCH_ID = parseInt(BRANCH_ID);
+  USER_ID = parseInt(USER_ID);
+  SPECIALIZATION_ID = parseInt(SPECIALIZATION_ID);
+  RATING = parseFloat(RATING);
+
+  if (isNaN(LICENSE_NO) || isNaN(BRANCH_ID) || isNaN(USER_ID) || isNaN(SPECIALIZATION_ID)) {
+    return res.status(400).json({ error: "INVALID LICENSE NUMBER, BRANCH ID, USER ID OR SPECIALIZATION ID" });
   }
 
   try {
     const pool = await sql.connect(config);
 
-    // Check USER_ID exists
     const userResult = await pool.request()
       .input("USER_ID", sql.Int, USER_ID)
       .query(`SELECT * FROM USERS WHERE USER_ID = @USER_ID`);
     if (userResult.recordset.length === 0) return res.status(400).json({ error: "INVALID USER_ID" });
 
-    // Check BRANCH_ID exists
     const branchResult = await pool.request()
       .input("BRANCH_ID", sql.Int, BRANCH_ID)
       .query(`SELECT * FROM BRANCHES WHERE BRANCH_ID = @BRANCH_ID`);
@@ -118,13 +126,13 @@ router.post("/", authenticateToken, authorizeUser([userTables.admin], false), as
       .input("LICENSE_NO", sql.Int, LICENSE_NO)
       .input("BRANCH_ID", sql.Int, BRANCH_ID)
       .input("USER_ID", sql.Int, USER_ID)
-      .input("SPECIALIZATION", sql.VarChar(50), SPECIALIZATION)
+      .input("SPECIALIZATION_ID", sql.Int, SPECIALIZATION_ID)
       .input("STATUS", sql.VarChar(50), STATUS)
       .input("DATE_STARTED", sql.Date, DATE_STARTED || new Date())
       .input("RATING", sql.Float, RATING || 0.0)
       .query(`
-        INSERT INTO DOCTORS (LICENSE_NO, BRANCH_ID, USER_ID, SPECIALIZATION, STATUS, DATE_STARTED, RATING)
-        VALUES (@LICENSE_NO, @BRANCH_ID, @USER_ID, @SPECIALIZATION, @STATUS, @DATE_STARTED, @RATING)
+        INSERT INTO DOCTORS (LICENSE_NO, BRANCH_ID, USER_ID, SPECIALIZATION_ID, STATUS, DATE_STARTED, RATING)
+        VALUES (@LICENSE_NO, @BRANCH_ID, @USER_ID, @SPECIALIZATION_ID, @STATUS, @DATE_STARTED, @RATING)
       `);
 
     res.status(201).json({ message: "DOCTOR ADDED SUCCESSFULLY" });

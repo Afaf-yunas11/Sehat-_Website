@@ -87,4 +87,14 @@ router.post("/logout", authenticateToken, (req, res) => {
   res.status(200).json({ message: "LOGOUT SUCCESSFUL" });
 });
 
+router.get("/current-user", authenticateToken, async (req, res) => {
+  if(req.user){
+    res.status(200).json({userId: req.user.userId, loginType: req.user.loginType});
+  }
+  else{
+    res.status(401).json({ error: "UNAUTHORIZED" });
+  }
+})
+
+
 export default router;

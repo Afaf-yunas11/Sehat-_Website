@@ -1,5 +1,7 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import otherDefaultAvatar from '../../assets/otherDefaultAvatar.png';
+import routes from '../../routes/routes';
 
 const Logout = () => {
   const navigate = useNavigate();
@@ -12,12 +14,12 @@ const Logout = () => {
       credentials: 'include',
     })
       .then(response => {
-      if (!response.ok) {
-        throw new Error('Failed to log out');
-      }
+        if (!response.ok) {
+          throw new Error('Failed to log out');
+        }
       })
       .catch(error => {
-      console.error('Logout error:', error);
+        console.error('Logout error:', error);
       });
   }, []);
 
@@ -26,16 +28,18 @@ const Logout = () => {
   };
 
   return (
-    <div className="d-flex flex-column align-items-center justify-content-center" style={{ minHeight: '100vh' }}>
-      {/* Placeholder for image */}
-      <div style={{ width: 120, height: 120, background: '#eee', borderRadius: '50%', marginBottom: 32, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <span style={{ color: '#bbb', fontSize: 48 }}>🗝️</span>
+    <>
+      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
+        <img
+          src={otherDefaultAvatar}
+          alt="You seem lost"
+          style={{ maxWidth: 350, width: '100%', marginLeft:"4vw" }}
+        />
+        <div style={{ fontWeight: 500, fontSize: '1.4rem', marginTop: 16 }}>Till next time!</div>
+        <div style={{ color: '#888' }}>Click here to <a style={{ color: '#888' }} href={routes.login}>log in</a> </div>
       </div>
-      <h2>You have been logged out</h2>
-      <button className="btn btn-primary mt-4" onClick={handleLoginRedirect}>
-        Go to Login
-      </button>
-    </div>
+
+    </>
   );
 };
 

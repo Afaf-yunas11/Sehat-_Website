@@ -13,10 +13,6 @@ export const userTables = Object.freeze({
   admin: "ADMINS",
 });
 
-
-//what are some tables allowed ,its an array 
-
-
 export const allowedTables = [
   "PATIENTS",
   "DOCTORS",
