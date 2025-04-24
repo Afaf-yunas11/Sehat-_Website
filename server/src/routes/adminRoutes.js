@@ -27,10 +27,7 @@ router.get(
 );
 
 // GET admin by user ID
-router.get(
-  "/by-user/:id",
-  authenticateToken,
-  authorizeUser([userTables.admin], true),
+router.get("/by-user/:id", authenticateToken, authorizeUser([userTables.admin], true),
   async (req, res) => {
     const id = parseInt(req.params.id);
     if (isNaN(id)) {
@@ -42,13 +39,13 @@ router.get(
       const result = await pool
         .request()
         .input("USER_ID", sql.Int, id)
-        .query(`SELECT * FROM ADMIN WHERE USER_ID = @USER_ID`);
+        .query(`SELECT * FROM ADMINS WHERE USER_ID = @USER_ID`);
 
       if (result.recordset.length === 0) {
         return res.status(404).json({ error: "ADMIN NOT FOUND" });
       }
 
-      res.status(200).json(result.recordset[0]);
+      res.status(200).json(result.recordset);
     } catch (error) {
       res.status(500).json({ error: error.message });
     }

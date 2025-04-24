@@ -1,0 +1,79 @@
+.sidebar {
+  position: fixed;
+  height: calc(100vh - 200px); /* Adjust for header */
+  z-index: 1000;
+  top: 200px; /* Position below header */
+  left: 0;
+  width: 16.666667%; /* Equivalent to col-md-2 */
+  background: white;
+}
+
+.sidebar .nav-link {
+  padding: 0.8rem 1rem;
+  border-radius: 4px;
+  margin: 0.2rem 0;
+  transition: all 0.3s ease;
+}
+
+.sidebar .nav-link:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.sidebar .nav-link.active {
+  background-color: rgba(0, 0, 0, 0.1);
+  font-weight: 500;
+}
+
+/* Main content area */
+.main-content {
+  margin-left: 16.666667%; /* Equivalent to col-md-2 */
+  padding: 2rem;
+}
+
+/* Table styles */
+.table-container {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.table-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+/* Form styles */
+.form-container {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  padding: 2rem;
+  margin-bottom: 2rem;
+}
+
+/* Action buttons */
+.action-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* Status badges */
+.status-badge {
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.875rem;
+}
+
+.status-active {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.status-banned {
+  background-color: #f8d7da;
+  color: #721c24;
+} 

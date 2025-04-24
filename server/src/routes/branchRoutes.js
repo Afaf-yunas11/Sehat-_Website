@@ -15,7 +15,7 @@ const config = JSON.parse(process.env.CONFIG);
 router.get("/", authenticateToken, async (req, res) => {
   try {
     const pool = await sql.connect(config);
-    const result = await pool.request().query("SELECT * FROM BRANCHES");
+    const result = await pool.request().query("SELECT B.*, H.HOSPITAL_NAME FROM BRANCHES B INNER JOIN HOSPITALS H ON B.HOSPITAL_ID = H.HOSPITAL_ID ");
     res.status(200).json(result.recordset);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -64,24 +64,33 @@ router.post("/", authenticateToken, authorizeUser([userTables.admin], false), as
   try {
     const { HOSPITAL_ID, TOTAL_BEDS, TOTAL_VENTILATORS, LOCATION, LATITUDE, LONGITUDE, PHONE_NO } = req.body;
 
+    // Validate required fields
+    if (!HOSPITAL_ID || !TOTAL_BEDS || !TOTAL_VENTILATORS || !LOCATION || !PHONE_NO) {
+      return res.status(400).json({ error: "MISSING REQUIRED FIELDS" });
+    }
+
     const pool = await sql.connect(config);
+    
+    // Check if hospital exists
     const hospitalCheck = await pool
       .request()
       .input("HOSPITAL_ID", sql.Int, HOSPITAL_ID)
       .query("SELECT HOSPITAL_ID FROM HOSPITALS WHERE HOSPITAL_ID = @HOSPITAL_ID");
 
-    if (hospitalCheck.recordset.length === 0)
+    if (hospitalCheck.recordset.length === 0) {
       return res.status(400).json({ error: "HOSPITAL_ID DOES NOT EXIST" });
+    }
 
+    // Insert branch with coordinates
     await pool
       .request()
       .input("HOSPITAL_ID", sql.Int, HOSPITAL_ID)
       .input("TOTAL_BEDS", sql.Int, TOTAL_BEDS)
       .input("TOTAL_VENTILATORS", sql.Int, TOTAL_VENTILATORS)
       .input("LOCATION", sql.VarChar(100), LOCATION)
-      .input("LATITUDE", sql.Decimal(9, 6), LATITUDE)
-      .input("LONGITUDE", sql.Decimal(9, 6), LONGITUDE)
-      .input("PHONE_NO", sql.VarChar(10), PHONE_NO)
+      .input("LATITUDE", sql.Decimal(9, 6), LATITUDE || null)
+      .input("LONGITUDE", sql.Decimal(9, 6), LONGITUDE || null)
+      .input("PHONE_NO", sql.VarChar(20), PHONE_NO)
       .query(`
         INSERT INTO BRANCHES 
         (HOSPITAL_ID, TOTAL_BEDS, TOTAL_VENTILATORS, LOCATION, LATITUDE, LONGITUDE, PHONE_NO)
@@ -91,19 +100,29 @@ router.post("/", authenticateToken, authorizeUser([userTables.admin], false), as
 
     res.status(201).json({ message: "BRANCH ADDED SUCCESSFULLY" });
   } catch (err) {
+    console.error('Error adding branch:', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// Update branch (check if updated hospital_id exists)
+// Update branch
 router.patch("/:id", authenticateToken, authorizeUser([userTables.admin], false), async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     if (isNaN(id)) return res.status(400).json({ error: "INVALID BRANCH ID" });
 
     const updates = req.body;
-    if (Object.keys(updates).length === 0)
+    if (Object.keys(updates).length === 0) {
       return res.status(400).json({ error: "NO FIELDS TO UPDATE" });
+    }
+
+    // Convert latitude and longitude to proper format if they exist
+    if (updates.LATITUDE !== undefined) {
+      updates.LATITUDE = updates.LATITUDE === null ? null : parseFloat(updates.LATITUDE);
+    }
+    if (updates.LONGITUDE !== undefined) {
+      updates.LONGITUDE = updates.LONGITUDE === null ? null : parseFloat(updates.LONGITUDE);
+    }
 
     const columnNames = await fetchColumnNames("BRANCHES");
     const columnTypes = await fetchColumnTypes("BRANCHES");
@@ -119,8 +138,9 @@ router.patch("/:id", authenticateToken, authorizeUser([userTables.admin], false)
         .request()
         .input("HOSPITAL_ID", sql.Int, updates.HOSPITAL_ID)
         .query("SELECT HOSPITAL_ID FROM HOSPITALS WHERE HOSPITAL_ID = @HOSPITAL_ID");
-      if (check.recordset.length === 0)
+      if (check.recordset.length === 0) {
         return res.status(400).json({ error: "UPDATED HOSPITAL_ID DOES NOT EXIST" });
+      }
     }
 
     const pool = await sql.connect(config);
@@ -128,7 +148,11 @@ router.patch("/:id", authenticateToken, authorizeUser([userTables.admin], false)
 
     let setClauses = [];
     for (let key in updates) {
-      request.input(key, columnTypes[key], updates[key]);
+      if (key === 'LATITUDE' || key === 'LONGITUDE') {
+        request.input(key, sql.Decimal(9, 6), updates[key]);
+      } else {
+        request.input(key, columnTypes[key], updates[key]);
+      }
       setClauses.push(`${key} = @${key}`);
     }
 
@@ -137,17 +161,19 @@ router.patch("/:id", authenticateToken, authorizeUser([userTables.admin], false)
       `UPDATE BRANCHES SET ${setClauses.join(", ")} WHERE BRANCH_ID = @BRANCH_ID`
     );
 
-    if (result.rowsAffected[0] === 0)
+    if (result.rowsAffected[0] === 0) {
       return res.status(404).json({ error: "BRANCH NOT FOUND" });
+    }
 
     res.status(200).json({ message: "BRANCH UPDATED SUCCESSFULLY" });
   } catch (err) {
+    console.error('Error updating branch:', err);
     res.status(500).json({ error: err.message });
   }
 });
 
 // Delete branch by ID
-router.delete("/:id", authenticateToken, authorizeUser([userTables.admin], true), async (req, res) => {
+router.delete("/:id", authenticateToken, authorizeUser([userTables.admin], false), async (req, res) => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) return res.status(400).json({ error: "INVALID BRANCH ID" });
 

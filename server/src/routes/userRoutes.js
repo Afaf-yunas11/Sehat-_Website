@@ -19,8 +19,27 @@ router.get("/", authenticateToken, authorizeUser([userTables.admin], false), asy
     const pool = await sql.connect(config);
     const result = await pool.request().query(
       `
-      SELECT USER_ID, F_NAME, L_NAME, CONVERT(VARCHAR, DOB, 103) AS DOB, GENDER, ACCOUNT_STATUS
-      FROM USERS;
+      SELECT 
+        U.USER_ID,
+        U.F_NAME,
+        U.L_NAME,
+        U.EMAIL,
+        CONVERT(VARCHAR, DOB, 103) AS DOB,
+        U.GENDER,
+        U.ACCOUNT_STATUS,
+        CASE
+          WHEN P.USER_ID IS NOT NULL THEN 'PATIENTS'
+          WHEN D.USER_ID IS NOT NULL THEN 'DOCTORS'
+          WHEN R.USER_ID IS NOT NULL THEN 'RESCUE_WORKERS'
+          WHEN A.USER_ID IS NOT NULL THEN 'ADMINS'
+          ELSE 'UNKNOWN'
+        END AS ROLE
+      FROM USERS U
+      LEFT JOIN PATIENTS P ON U.USER_ID = P.USER_ID
+      LEFT JOIN DOCTORS D ON U.USER_ID = D.USER_ID
+      LEFT JOIN RESCUE_WORKERS R ON U.USER_ID = R.USER_ID
+      LEFT JOIN ADMINS A ON U.USER_ID = A.USER_ID
+      ORDER BY U.USER_ID;
       `
     );
     res.status(200).json(result.recordset);

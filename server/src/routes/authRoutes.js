@@ -42,7 +42,7 @@ router.post("/login", async (req, res) => {
       .input("email", sql.VarChar(100), email)
       .query(
         `
-      SELECT USERS.USER_ID, EMAIL, PASSWORD
+      SELECT USERS.USER_ID, EMAIL, PASSWORD, ACCOUNT_STATUS
       FROM USERS
       INNER JOIN ${loginType} ON USERS.USER_ID = ${loginType}.USER_ID
       WHERE LOWER(EMAIL) = LOWER(@email);
@@ -76,7 +76,7 @@ router.post("/login", async (req, res) => {
       maxAge: 3600 * 1000,
     });
 
-    res.status(200).json({ message: "LOGIN SUCCESSFUL", userId: user.USER_ID });
+    res.status(200).json({ message: "LOGIN SUCCESSFUL", userId: user.USER_ID, accountStatus: user.ACCOUNT_STATUS });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

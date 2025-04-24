@@ -1,5 +1,5 @@
 import React, { useState, useEffect, use } from 'react';
-import './dashboard.css';
+import './userDashboard.css';
 import Header from '../../components/header';
 import ProceedButton from '../../components/proceedButton';
 import Alert from '../../components/alert';
@@ -27,7 +27,7 @@ import AppointmentConfirmationModal from '../../components/appointmentConfirmati
 import DashboardHeader from '../../components/dashboardHeader';
 import SpinnerComponent from '../../components/spinnerComponent';
 
-const Dashboard = () => {
+const UserDashboard = () => {
   const [appointments, setAppointments] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
@@ -396,6 +396,11 @@ const Dashboard = () => {
             setShowModal(true);
             setAppointmentIndex(index);
           }}
+          
+          showPatientName={false}
+          showViewButton={true}
+          showEditButton={true}
+          showCancelButton={true}
         />
 
         <CancelAppointmentModal
@@ -438,6 +443,9 @@ const Dashboard = () => {
               console.error('Error updating appointment:', response.statusText);
             }
           }}
+          makeBookingStatusEditable={false}
+          showDoctorName={false}
+          showPatientName={false}
         />
 
         <NewAppointmentModal
@@ -503,4 +511,4 @@ const Dashboard = () => {
     </>
   );
 };
-export default Dashboard;
+export default UserDashboard;

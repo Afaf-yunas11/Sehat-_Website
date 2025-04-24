@@ -109,6 +109,60 @@ router.get("/by-user/:id", authenticateToken, authorizeUser([userTables.admin], 
   }
 });
 
+router.get("/by-doctor/:id", authenticateToken, authorizeUser([userTables.admin], true), async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const pool = await sql.connect(config);
+    if (isNaN(id)) {
+      return res.status(400).json({ error: "INVALID USER ID" });
+    }
+
+    const result = await pool
+      .request()
+      .input("USER_ID", sql.Int, id)
+      .query(
+        `
+      SELECT 
+        B.BOOKING_ID, 
+        B.BOOKING_DATE, 
+        B.BOOKING_TIME, 
+        B.DURATION_OF_STAY, 
+        B.BOOKING_STATUS, 
+        B.PATIENT_ID,
+        U.USER_ID AS PATIENT_USER_ID,
+        (U.F_NAME + ' ' + U.L_NAME) AS PATIENT_NAME,
+        PR.PROCEDURE_NAME, 
+        PR.PROCEDURE_DURATION,
+        BR.BRANCH_ID,
+        BR.[LOCATION] AS BRANCH_LOCATION,
+        BR.PHONE_NO,
+        BR.LATITUDE,
+        BR.LONGITUDE,
+        H.HOSPITAL_NAME,
+        RO.ROOM_ID,
+        RO.ROOM_TYPE
+      FROM BOOKINGS AS B
+      INNER JOIN PROCEDURES AS PR ON PR.PROCEDURE_ID = B.PROCEDURE_ID
+      INNER JOIN PATIENTS AS PA ON PA.PATIENT_ID = B.PATIENT_ID
+      INNER JOIN USERS AS U ON U.USER_ID = PA.USER_ID
+      INNER JOIN DOCTORS AS D ON D.LICENSE_NO = B.LICENSE_NO
+      INNER JOIN USERS AS U2 ON U2.USER_ID = D.USER_ID
+      INNER JOIN ROOMS AS RO ON RO.ROOM_ID = B.ROOM_ID
+      INNER JOIN BRANCHES AS BR ON BR.BRANCH_ID = RO.BRANCH_ID
+      INNER JOIN HOSPITALS AS H ON H.HOSPITAL_ID = BR.HOSPITAL_ID
+      WHERE U2.USER_ID = @USER_ID
+      `
+      );
+
+    if (result.recordset.length === 0)
+      return res.status(404).json({ error: "BOOKING(S) NOT FOUND" });
+
+    res.status(200).json(result.recordset);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+})
+
 router.post("/", authenticateToken, authorizeUser([userTables.admin, userTables.patient], false), async (req, res) => {
   try {
     let {
@@ -121,7 +175,7 @@ router.post("/", authenticateToken, authorizeUser([userTables.admin, userTables.
       DURATION_OF_STAY,
       BOOKING_STATUS,
     } = req.body;
-    
+
     DURATION_OF_STAY = parseInt(DURATION_OF_STAY);
     LICENSE_NO = parseInt(LICENSE_NO);
     PROCEDURE_ID = parseInt(PROCEDURE_ID);
@@ -246,7 +300,7 @@ router.delete("/by-booking/:id", authenticateToken, authorizeUser([userTables.ad
   }
 });
 
-router.patch("/by-booking/:id", authenticateToken, authorizeUser([userTables.admin, userTables.patient], true), async (req, res) => {
+router.patch("/by-booking/:id", authenticateToken, authorizeUser([userTables.admin, userTables.patient, userTables.doctor], true), async (req, res) => {
   const id = parseInt(req.params.id);
   const updates = req.body;
   const columnTypes = await fetchColumnTypes("BOOKINGS");
@@ -265,11 +319,10 @@ router.patch("/by-booking/:id", authenticateToken, authorizeUser([userTables.adm
   const request = pool.request();
 
   for (let field in updates) {
-    if (field === "BOOKING_ID" || field === "PATIENT_ID" || field === "PROCEDURE_ID" ) {
+    if (field === "BOOKING_ID" || field === "PATIENT_ID" || field === "PROCEDURE_ID") {
       return res.status(403).json({ error: "FORBIDDEN" });
     }
-    if(field === "BOOKING_STATUS")
-    {
+    if (field === "BOOKING_STATUS") {
       updates[field] = updates[field].toLowerCase();
     }
     request.input(field, columnTypes[field], updates[field]);

@@ -39,6 +39,31 @@ router.get(
   }
 );
 
+router.get(
+  "/all",
+  authenticateToken,
+  authorizeUser([userTables.admin, userTables.doctor, userTables.patient, userTables.rescueWorker], false),
+  async (req, res) => {
+    try {
+      const pool = await sql.connect(config);
+      const result = await pool.request().query(
+        `
+        SELECT DISTINCT
+          P.PROCEDURE_ID,
+          P.PROCEDURE_NAME,
+          P.PROCEDURE_DURATION,
+          P.OPERATION_SUCCESS_RATE
+        FROM PROCEDURES AS P
+        ORDER BY P.PROCEDURE_NAME;
+      `
+      );
+      res.status(200).json(result.recordset);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+);
+
 // GET procedure by ID (admin only)
 router.get(
   "/:id",

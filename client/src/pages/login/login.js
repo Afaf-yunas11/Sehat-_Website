@@ -32,8 +32,15 @@ const LoginForm = () => {
         body: JSON.stringify({ loginType: loginTypes[role], email, password }),
       });
 
+      const data = await response.json();
+
       if (response.ok) {
-        const data = await response.json();
+        // Check if account is inactive
+        if (data.accountStatus === 'inactive') {
+          setAlertMessage('Your account has been deactivated. Please contact an administrator.');
+          return;
+        }
+
         console.log('Login successful:', data);
         localStorage.setItem('userData', JSON.stringify(data));
         setAlertMessage('');
@@ -41,8 +48,7 @@ const LoginForm = () => {
       } else {
         if (response.status === 404 || response.status === 401) {
           setAlertMessage('Invalid credentials');
-        }
-        if (response.status >= 500 && response.status < 600) {
+        } else if (response.status >= 500 && response.status < 600) {
           setAlertMessage('Server error occurred');
         }
       }
@@ -63,7 +69,10 @@ const LoginForm = () => {
         <select
           className={styles.roleDropdown}
           value={role}
-          onChange={(e) => setRole(e.target.value)}
+          onChange={(e) => {
+            setRole(e.target.value);
+            setAlertMessage(''); // Clear alert message when role changes
+          }}
         >
           <option value="user">User</option>
           <option value="doctor">Doctor</option>

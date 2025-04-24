@@ -89,28 +89,33 @@ router.get("/by-procedure-id/:id", authenticateToken, authorizeUser([userTables.
   }
 });
 
-
 router.post("/", authenticateToken, authorizeUser([userTables.admin], false), async (req, res) => {
-  let { HOSPITAL_ID, HOSPITAL_NAME } = req.body;
-  HOSPITAL_ID = parseInt(HOSPITAL_ID);
-
-  if (!HOSPITAL_ID || !HOSPITAL_NAME) {
-    return res.status(400).json({ error: "HOSPITAL_ID AND HOSPITAL_NAME ARE REQUIRED" });
-  }
+  let { HOSPITAL_NAME } = req.body;
 
   try {
     const pool = await sql.connect(config);
 
     const result = await pool
       .request()
-      .input("HOSPITAL_ID", sql.Int, HOSPITAL_ID)
-      .input("HOSPITAL_NAME", sql.VarChar(255), HOSPITAL_NAME)
+      .input("HOSPITAL_NAME", sql.VarChar(100), HOSPITAL_NAME)
       .query(`
-        INSERT INTO HOSPITALS (HOSPITAL_ID, HOSPITAL_NAME)
-        VALUES (@HOSPITAL_ID, @HOSPITAL_NAME)
+        INSERT INTO HOSPITALS (HOSPITAL_NAME)
+        VALUES (@HOSPITAL_NAME)
       `);
 
-    res.status(201).json({ message: "HOSPITAL ADDED SUCCESSFULLY" });
+    const hospitalID = await pool
+      .request()
+      .input("HOSPITAL_NAME", sql.VarChar(100), HOSPITAL_NAME)
+      .query(`
+            SELECT HOSPITAL_ID FROM HOSPITALS WHERE HOSPITAL_NAME = @HOSPITAL_NAME
+          `)
+
+    
+    res.status(201).json({
+      message: "HOSPITAL ADDED SUCCESSFULLY",
+      HOSPITAL_ID: hospitalID.recordset[0].HOSPITAL_ID
+    });
+
   } catch (error) {
     // Handle duplicate ID or other SQL errors
     if (error.number === 2627) {

@@ -28,25 +28,36 @@ router.get("/", authenticateToken, authorizeUser([userTables.admin], false), asy
   }
 });
 
-// GET doctor by license number
-router.get("/:id", authenticateToken, authorizeUser([userTables.admin], false), async (req, res) => {
-  const license = parseInt(req.params.license);
-  if (isNaN(license)) return res.status(400).json({ error: "INVALID LICENSE NUMBER" });
+router.get("/by-user-id/:id", authenticateToken, authorizeUser([userTables.admin], true), async (req, res) => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) return res.status(400).json({ error: "INVALID USER ID" });
 
   try {
     const pool = await sql.connect(config);
     const result = await pool.request()
-      .input("LICENSE_NO", sql.Int, license)
+      .input("USER_ID", sql.Int, id)
       .query(`
         SELECT 
-          D.*, 
-          (U.F_NAME + ' ' + U.L_NAME) AS DOCTOR_NAME 
+          D.LICENSE_NO,
+          U.USER_ID,
+          U.F_NAME,
+          U.L_NAME,
+          B.BRANCH_ID,
+          DS.SPECIALIZATION_NAME,
+          D.[STATUS],
+          D.DATE_STARTED,
+          D.RATING,
+          B.LOCATION,
+          B.LATITUDE,
+          B.LONGITUDE
         FROM DOCTORS AS D
         INNER JOIN USERS AS U ON D.USER_ID = U.USER_ID
-        WHERE D.LICENSE_NO = @LICENSE_NO
+        INNER JOIN DOCTOR_SPECIALIZATIONS AS DS ON DS.SPECIALIZATION_ID = D.SPECIALIZATION_ID
+        INNER JOIN BRANCHES AS B ON B.BRANCH_ID = D.BRANCH_ID
+        WHERE D.USER_ID = @USER_ID
       `);
-    if (result.recordset.length === 0) return res.status(404).json({ error: "DOCTOR NOT FOUND" });
-    res.status(200).json(result.recordset[0]);
+    if (result.recordset.length === 0) return res.status(404).json({ error: `DOCTOR WITH USER ID ${id} NOT FOUND` });
+    res.status(200).json(result.recordset);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

@@ -27,6 +27,9 @@ import branchRoutes from "./src/routes/branchRoutes.js";
 import transactionRoutes from "./src/routes/transactionRoutes.js";
 import roomRoutes from "./src/routes/roomRoutes.js";
 import specializationRoutes from "./src/routes/specializationRoutes.js";
+import procedureDoctorRoutes from "./src/routes/procedureDoctorRoutes.js"
+import adminRoutes from "./src/routes/adminRoutes.js";
+import emergencyCallRoutes from  "./src/routes/emergencyCallRoutes.js";
 
 
 const app = express();
@@ -57,6 +60,10 @@ app.use("/api/branch",branchRoutes);
 app.use("/api/transactions", transactionRoutes);
 app.use("/api/rooms", roomRoutes);
 app.use("/api/specializations", specializationRoutes);
+app.use("/api/procedure-doctor", procedureDoctorRoutes);
+app.use("/api/admins", adminRoutes);
+app.use("/api/emergency-calls", emergencyCallRoutes);
+
 
 
 /* SERVE STATIC FILES */

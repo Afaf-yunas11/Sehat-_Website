@@ -8,9 +8,14 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 
 const AppointmentTable = ({
   appointments,
-  onView,
-  onEdit,
-  onCancel
+  onView = () => { },
+  onEdit = () => { },
+  onCancel = () => { },
+
+  showPatientName = true,
+  showViewButton = true,
+  showEditButton = true,
+  showCancelButton = true,
 }) => {
   if (!appointments || appointments.length === 0) {
     return (
@@ -28,20 +33,21 @@ const AppointmentTable = ({
 
   return (
 
-    <div className="100%">
+    <div style={{ width: '100%' }}>
       <Table striped responsive bordered hover style={{ width: '100%', margin: 0 }}>
         <thead>
           <tr>
             <th>ID</th>
             <th>Booking Date</th>
             <th>Hospital Name</th>
+            {showPatientName && (<th> Patient Name</th>)}
             <th>Procedure Name</th>
             <th>Status</th>
             <th>Action</th>
           </tr>
         </thead>
         <tbody>
-          {appointments.map((appointment, index) => (
+          {appointments.length > 0 && appointments.map((appointment, index) => (
             <tr key={index}>
               <td>{appointment.BOOKING_ID}</td>
               <td>
@@ -51,24 +57,41 @@ const AppointmentTable = ({
                 })()}
               </td>
               <td>{appointment.HOSPITAL_NAME}</td>
+              {showPatientName && (<td> {appointment.PATIENT_NAME} </td>)}
               <td>{appointment.PROCEDURE_NAME}</td>
               <td>{appointment.BOOKING_STATUS}</td>
               <td className="btn-group" width='100%' role="group" aria-label="Basic mixed styles example">
-                <Button variant="success" onClick={() => onView(index)}>View</Button>
-                <Button
-                  variant="warning"
-                  onClick={() => onEdit(index)}
-                  disabled={appointment.BOOKING_STATUS.toLowerCase() !== 'scheduled'}
-                >
-                  Edit
-                </Button>
-                <Button
-                  variant="danger"
-                  onClick={() => onCancel(index)}
-                  disabled={appointment.BOOKING_STATUS.toLowerCase() === 'cancelled'}
-                >
-                  Cancel
-                </Button>
+                {showViewButton && (
+                  <Button
+                    variant="success"
+                    onClick={() => onView(index)}
+                    style={{ minWidth: 120 }}
+                  >
+                    View
+                  </Button>
+                )}
+
+                {showEditButton && (
+                  <Button
+                    variant="warning"
+                    onClick={() => onEdit(index)}
+                    disabled={appointment.BOOKING_STATUS.toLowerCase() !== 'scheduled'}
+                    style={{ minWidth: 120 }}
+                  >
+                    Edit
+                  </Button>
+                )}
+
+                {showCancelButton && (
+                  <Button
+                    variant="danger"
+                    onClick={() => onCancel(index)}
+                    disabled={appointment.BOOKING_STATUS.toLowerCase() !== 'scheduled'}
+                    style={{ minWidth: 120 }}
+                  >
+                    Cancel
+                  </Button>
+                )}
               </td>
             </tr>
           ))}
