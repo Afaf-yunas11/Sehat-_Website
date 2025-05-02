@@ -24,16 +24,16 @@ router.get("/", authenticateToken, authorizeUser([userTables.admin, userTables.r
   H.HOSPITAL_NAME,
   B.TOTAL_BEDS,
   B.TOTAL_VENTILATORS,
-  B.LOCATION,
+  CONCAT(BA.ADDRESS, ', ', BA.CITY) AS LOCATION,
   B.LATITUDE,
   B.LONGITUDE,
   B.PHONE_NO
 FROM 
   BRANCHES B
 INNER JOIN 
-  HOSPITALS H
-ON 
-  B.HOSPITAL_ID = H.HOSPITAL_ID;
+  HOSPITALS H ON B.HOSPITAL_ID = H.HOSPITAL_ID
+INNER JOIN
+  BRANCH_ADDRESS BA ON B.BRANCH_ID = BA.BRANCH_ID;
 `
     );
     res.status(200).json(result.recordset);
@@ -55,27 +55,29 @@ router.get("/by-procedure-id/:id", authenticateToken, authorizeUser([userTables.
       .request()
       .input("PROCEDURE_ID", sql.Int(100), id)
       .query(`
-        SELECT DISTINCT
-          H.HOSPITAL_ID,
-          H.HOSPITAL_NAME,
-          B.BRANCH_ID,
-          B.LOCATION,
-          B.LATITUDE,
-          B.LONGITUDE,
-          B.PHONE_NO
-        FROM 
-          PROCEDURES P
-        INNER JOIN 
-          PROCEDURE_DOCTOR PD ON P.PROCEDURE_ID = PD.PROCEDURE_ID
-        INNER JOIN 
-          DOCTORS D ON PD.LICENSE_NO = D.LICENSE_NO
-        INNER JOIN
-          BRANCHES B ON D.BRANCH_ID = B.BRANCH_ID
-        INNER JOIN
-          HOSPITALS H ON B.HOSPITAL_ID = H.HOSPITAL_ID
-        WHERE 
-          P.PROCEDURE_ID = @PROCEDURE_ID AND LOWER(D.[STATUS]) IN ('active', 'on call')
-        ORDER BY H.HOSPITAL_NAME, B.LOCATION;
+            SELECT DISTINCT
+              H.HOSPITAL_ID,
+              H.HOSPITAL_NAME,
+              B.BRANCH_ID,
+              CONCAT(BA.ADDRESS, ', ', BA.CITY) AS LOCATION,
+              B.LATITUDE,
+              B.LONGITUDE,
+              B.PHONE_NO
+            FROM
+              PROCEDURES P
+              INNER JOIN
+              PROCEDURE_DOCTOR PD ON P.PROCEDURE_ID = PD.PROCEDURE_ID
+              INNER JOIN
+              DOCTORS D ON PD.LICENSE_NO = D.LICENSE_NO
+              INNER JOIN
+              BRANCHES B ON D.BRANCH_ID = B.BRANCH_ID
+              INNER JOIN
+              HOSPITALS H ON B.HOSPITAL_ID = H.HOSPITAL_ID
+              INNER JOIN
+              BRANCH_ADDRESS BA ON B.BRANCH_ID = BA.BRANCH_ID
+            WHERE 
+            P.PROCEDURE_ID = @PROCEDURE_ID AND LOWER(D.[STATUS]) IN ('active', 'on call')
+            ORDER BY H.HOSPITAL_NAME, [LOCATION];
       `);
 
     if (result.recordset.length === 0) {
@@ -110,7 +112,7 @@ router.post("/", authenticateToken, authorizeUser([userTables.admin], false), as
             SELECT HOSPITAL_ID FROM HOSPITALS WHERE HOSPITAL_NAME = @HOSPITAL_NAME
           `)
 
-    
+
     res.status(201).json({
       message: "HOSPITAL ADDED SUCCESSFULLY",
       HOSPITAL_ID: hospitalID.recordset[0].HOSPITAL_ID

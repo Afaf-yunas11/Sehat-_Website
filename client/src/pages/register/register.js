@@ -33,11 +33,13 @@ const Register = () => {
     BLOOD_GROUP: '',
     WEIGHT: '',
     ADDRESS: '',
+    CITY: '',
     HEIGHT: '',
     // Rescue worker specific
     RESCUE_LICENSE_NO: '',
     RESCUE_DATE_STARTED: '',
-    RESCUE_ADDRESS: ''
+    RESCUE_ADDRESS: '',
+    RESCUE_CITY: ''
   });
 
   const [successMessage, setSuccessMessage] = useState('');
@@ -126,6 +128,7 @@ const Register = () => {
             BLOOD_GROUP: formData.BLOOD_GROUP,
             WEIGHT: formData.WEIGHT,
             ADDRESS: formData.ADDRESS,
+            CITY: formData.CITY,
             HEIGHT: formData.HEIGHT
           };
           break;
@@ -134,7 +137,8 @@ const Register = () => {
             USER_ID: userId,
             LICENSE_NO: formData.RESCUE_LICENSE_NO,
             DATE_STARTED: formData.RESCUE_DATE_STARTED,
-            ADDRESS: formData.RESCUE_ADDRESS
+            ADDRESS: formData.RESCUE_ADDRESS,
+            CITY: formData.RESCUE_CITY
           };
           break;
         default:
@@ -514,13 +518,30 @@ const Register = () => {
                       />
                       <label htmlFor="address">Address</label>
                     </div>
+
+                    <div className="form-floating mb-3">
+                      <select
+                        className="form-select"
+                        id="city"
+                        name="CITY"
+                        value={formData.CITY}
+                        onChange={handleChange()}
+                        required
+                      >
+                        <option value="">Select City</option>
+                        <option value="Lahore">Lahore</option>
+                        <option value="Islamabad">Islamabad</option>
+                        <option value="Karachi">Karachi</option>
+                        <option value="Peshawar">Peshawar</option>
+                      </select>
+                      <label htmlFor="city">City</label>
+                    </div>
                   </>
                 )}
 
                 {/* Rescue worker specific fields */}
                 {userType === 'rescue' && (
                   <>
-
                     <div className="form-floating mb-3">
                       <input
                         type="number"
@@ -561,6 +582,24 @@ const Register = () => {
                         required
                       />
                       <label htmlFor="rescueAddress">Address</label>
+                    </div>
+
+                    <div className="form-floating mb-3">
+                      <select
+                        className="form-select"
+                        id="rescueCity"
+                        name="RESCUE_CITY"
+                        value={formData.RESCUE_CITY}
+                        onChange={handleChange()}
+                        required
+                      >
+                        <option value="">Select City</option>
+                        <option value="Lahore">Lahore</option>
+                        <option value="Islamabad">Islamabad</option>
+                        <option value="Karachi">Karachi</option>
+                        <option value="Peshawar">Peshawar</option>
+                      </select>
+                      <label htmlFor="rescueCity">City</label>
                     </div>
                   </>
                 )}

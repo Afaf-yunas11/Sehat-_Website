@@ -16,8 +16,17 @@ router.get("/", authenticateToken, authorizeUser([userTables.admin], false), asy
     const pool = await sql.connect(config);
     const result = await pool.request().query(
       `
-      SELECT R.ROOM_ID, B.BRANCH_ID, B.[LOCATION], H.HOSPITAL_NAME, R.MAX_OCCUPANCY, R.ROOM_TYPE, R.ROOM_COST_PER_NIGHT FROM ROOMS AS R
+      SELECT 
+        R.ROOM_ID, 
+        B.BRANCH_ID, 
+        CONCAT(BA.ADDRESS, ', ', BA.CITY) AS LOCATION, 
+        H.HOSPITAL_NAME, 
+        R.MAX_OCCUPANCY, 
+        R.ROOM_TYPE, 
+        R.ROOM_COST_PER_NIGHT 
+      FROM ROOMS AS R
       INNER JOIN BRANCHES AS B ON B.BRANCH_ID = R.BRANCH_ID
+      INNER JOIN BRANCH_ADDRESS AS BA ON B.BRANCH_ID = BA.BRANCH_ID
       INNER JOIN HOSPITALS AS H ON H.HOSPITAL_ID = B.HOSPITAL_ID
       `
     );
@@ -40,8 +49,17 @@ router.get("/:id", authorizeUser([userTables.admin], true), async (req, res) => 
       .input("ROOM_ID", sql.Int, id)
       .query(
         `
-        SELECT R.ROOM_ID, B.BRANCH_ID, B.[LOCATION], H.HOSPITAL_NAME, R.MAX_OCCUPANCY, R.ROOM_TYPE, R.ROOM_COST_PER_NIGHT FROM ROOMS AS R
+        SELECT 
+          R.ROOM_ID, 
+          B.BRANCH_ID, 
+          CONCAT(BA.ADDRESS, ', ', BA.CITY) AS LOCATION, 
+          H.HOSPITAL_NAME, 
+          R.MAX_OCCUPANCY, 
+          R.ROOM_TYPE, 
+          R.ROOM_COST_PER_NIGHT 
+        FROM ROOMS AS R
         INNER JOIN BRANCHES AS B ON B.BRANCH_ID = R.BRANCH_ID
+        INNER JOIN BRANCH_ADDRESS AS BA ON B.BRANCH_ID = BA.BRANCH_ID
         INNER JOIN HOSPITALS AS H ON H.HOSPITAL_ID = B.HOSPITAL_ID
         WHERE R.ROOM_ID = @ROOM_ID
         `
@@ -81,7 +99,9 @@ router.get("/by-branch-id/:branchId", authenticateToken, authorizeUser([userTabl
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
-});router.get("/by-branch/:branchId", authenticateToken, authorizeUser([userTables.admin], false), async (req, res) => {
+});
+
+router.get("/by-branch/:branchId", authenticateToken, authorizeUser([userTables.admin], false), async (req, res) => {
   try {
     const branchId = parseInt(req.params.branchId);
     if (isNaN(branchId)) {
@@ -94,9 +114,17 @@ router.get("/by-branch-id/:branchId", authenticateToken, authorizeUser([userTabl
       .input("BRANCH_ID", sql.Int, branchId)
       .query(
         `
-        SELECT R.ROOM_ID, B.BRANCH_ID, B.[LOCATION], H.HOSPITAL_NAME, R.MAX_OCCUPANCY, R.ROOM_TYPE, R.ROOM_COST_PER_NIGHT
+        SELECT 
+          R.ROOM_ID, 
+          B.BRANCH_ID, 
+          CONCAT(BA.ADDRESS, ', ', BA.CITY) AS LOCATION, 
+          H.HOSPITAL_NAME, 
+          R.MAX_OCCUPANCY, 
+          R.ROOM_TYPE, 
+          R.ROOM_COST_PER_NIGHT
         FROM ROOMS AS R
         INNER JOIN BRANCHES AS B ON B.BRANCH_ID = R.BRANCH_ID
+        INNER JOIN BRANCH_ADDRESS AS BA ON B.BRANCH_ID = BA.BRANCH_ID
         INNER JOIN HOSPITALS AS H ON H.HOSPITAL_ID = B.HOSPITAL_ID
         WHERE R.BRANCH_ID = @BRANCH_ID
         `

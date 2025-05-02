@@ -31,7 +31,7 @@ router.get("/", authenticateToken, authorizeUser([userTables.admin], false), asy
         PR.PROCEDURE_NAME, 
         PR.PROCEDURE_DURATION,
         BR.BRANCH_ID,
-        BR.[LOCATION] AS BRANCH_LOCATION,
+        CONCAT(BA.ADDRESS, ', ', BA.CITY) AS BRANCH_LOCATION,
         BR.PHONE_NO,
         BR.LATITUDE,
         BR.LONGITUDE,
@@ -46,6 +46,7 @@ router.get("/", authenticateToken, authorizeUser([userTables.admin], false), asy
       INNER JOIN USERS AS U2 ON U2.USER_ID = D.USER_ID
       INNER JOIN ROOMS AS RO ON RO.ROOM_ID = B.ROOM_ID
       INNER JOIN BRANCHES AS BR ON BR.BRANCH_ID = RO.BRANCH_ID
+      INNER JOIN BRANCH_ADDRESS AS BA ON BR.BRANCH_ID = BA.BRANCH_ID
       INNER JOIN HOSPITALS AS H ON H.HOSPITAL_ID = BR.HOSPITAL_ID
       `
     );
@@ -80,7 +81,7 @@ router.get("/by-user/:id", authenticateToken, authorizeUser([userTables.admin], 
         PR.PROCEDURE_NAME, 
         PR.PROCEDURE_DURATION,
         BR.BRANCH_ID,
-        BR.[LOCATION] AS BRANCH_LOCATION,
+        CONCAT(BA.ADDRESS, ', ', BA.CITY) AS BRANCH_LOCATION,
         BR.PHONE_NO,
         BR.LATITUDE,
         BR.LONGITUDE,
@@ -95,6 +96,7 @@ router.get("/by-user/:id", authenticateToken, authorizeUser([userTables.admin], 
       INNER JOIN USERS AS U2 ON U2.USER_ID = D.USER_ID
       INNER JOIN ROOMS AS RO ON RO.ROOM_ID = B.ROOM_ID
       INNER JOIN BRANCHES AS BR ON BR.BRANCH_ID = RO.BRANCH_ID
+      INNER JOIN BRANCH_ADDRESS AS BA ON BR.BRANCH_ID = BA.BRANCH_ID
       INNER JOIN HOSPITALS AS H ON H.HOSPITAL_ID = BR.HOSPITAL_ID
       WHERE U.USER_ID = @USER_ID
       `
@@ -134,7 +136,7 @@ router.get("/by-doctor/:id", authenticateToken, authorizeUser([userTables.admin]
         PR.PROCEDURE_NAME, 
         PR.PROCEDURE_DURATION,
         BR.BRANCH_ID,
-        BR.[LOCATION] AS BRANCH_LOCATION,
+        CONCAT(BA.ADDRESS, ', ', BA.CITY) AS BRANCH_LOCATION,
         BR.PHONE_NO,
         BR.LATITUDE,
         BR.LONGITUDE,
@@ -149,6 +151,7 @@ router.get("/by-doctor/:id", authenticateToken, authorizeUser([userTables.admin]
       INNER JOIN USERS AS U2 ON U2.USER_ID = D.USER_ID
       INNER JOIN ROOMS AS RO ON RO.ROOM_ID = B.ROOM_ID
       INNER JOIN BRANCHES AS BR ON BR.BRANCH_ID = RO.BRANCH_ID
+      INNER JOIN BRANCH_ADDRESS AS BA ON BR.BRANCH_ID = BA.BRANCH_ID
       INNER JOIN HOSPITALS AS H ON H.HOSPITAL_ID = BR.HOSPITAL_ID
       WHERE U2.USER_ID = @USER_ID
       `

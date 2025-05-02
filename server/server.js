@@ -64,8 +64,6 @@ app.use("/api/procedure-doctor", procedureDoctorRoutes);
 app.use("/api/admins", adminRoutes);
 app.use("/api/emergency-calls", emergencyCallRoutes);
 
-
-
 /* SERVE STATIC FILES */
 app.use(express.static(path.join(__dirname, "public")));
 

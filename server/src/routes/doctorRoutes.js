@@ -47,13 +47,14 @@ router.get("/by-user-id/:id", authenticateToken, authorizeUser([userTables.admin
           D.[STATUS],
           D.DATE_STARTED,
           D.RATING,
-          B.LOCATION,
+          CONCAT(BA.ADDRESS, ', ', BA.CITY) AS LOCATION,
           B.LATITUDE,
           B.LONGITUDE
         FROM DOCTORS AS D
         INNER JOIN USERS AS U ON D.USER_ID = U.USER_ID
         INNER JOIN DOCTOR_SPECIALIZATIONS AS DS ON DS.SPECIALIZATION_ID = D.SPECIALIZATION_ID
         INNER JOIN BRANCHES AS B ON B.BRANCH_ID = D.BRANCH_ID
+        INNER JOIN BRANCH_ADDRESS AS BA ON B.BRANCH_ID = BA.BRANCH_ID
         WHERE D.USER_ID = @USER_ID
       `);
     if (result.recordset.length === 0) return res.status(404).json({ error: `DOCTOR WITH USER ID ${id} NOT FOUND` });
@@ -140,7 +141,7 @@ router.post("/", async (req, res) => {
       .input("SPECIALIZATION_ID", sql.Int, SPECIALIZATION_ID)
       .input("STATUS", sql.VarChar(50), STATUS)
       .input("DATE_STARTED", sql.Date, DATE_STARTED || new Date())
-      .input("RATING", sql.Float, RATING || 0.0)
+      .input("RATING", sql.Float, RATING || 5.0)
       .query(`
         INSERT INTO DOCTORS (LICENSE_NO, BRANCH_ID, USER_ID, SPECIALIZATION_ID, STATUS, DATE_STARTED, RATING)
         VALUES (@LICENSE_NO, @BRANCH_ID, @USER_ID, @SPECIALIZATION_ID, @STATUS, @DATE_STARTED, @RATING)

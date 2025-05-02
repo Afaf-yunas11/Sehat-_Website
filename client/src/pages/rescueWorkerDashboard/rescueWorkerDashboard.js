@@ -28,6 +28,7 @@ const RescueWorkerDashboard = () => {
     GENDER: '',
     AGE: '',
     ADDRESS: '',
+    CITY: '',
     IS_USING_VENTILATOR: false,
     BRANCH_ID: ''
   });
@@ -94,6 +95,7 @@ const RescueWorkerDashboard = () => {
         const response = await axios.get(`http://localhost:8000/api/emergency-calls/by-rescue-worker/${rescueWorkerInfo.LICENSE_NO}`, {
           withCredentials: true
         });
+        
         setEmergencyCalls(response.data);
       } catch (error) {
         console.error('Error fetching emergency calls:', error);
@@ -120,16 +122,21 @@ const RescueWorkerDashboard = () => {
     fetchBranches();
   }, []);
 
-  // Modify handleShowModal to include location finding
+  // Modify handleShowModal to include separate address and city
   const handleShowModal = (call = null) => {
     if (call) {
       setEditingCall(call);
+      // Extract address and city if needed
+      let address = call.LOCATION || '';
+      let city = call.CITY || '';
+
       setFormData({
         PATIENT_F_NAME: call.PATIENT_F_NAME,
         PATIENT_L_NAME: call.PATIENT_L_NAME,
         GENDER: call.GENDER,
         AGE: call.AGE || '',
-        ADDRESS: call.ADDRESS,
+        ADDRESS: address,
+        CITY: city,
         IS_USING_VENTILATOR: call.IS_USING_VENTILATOR,
         BRANCH_ID: call.BRANCH_ID || ''
       });
@@ -142,6 +149,7 @@ const RescueWorkerDashboard = () => {
         GENDER: '',
         AGE: '',
         ADDRESS: '',
+        CITY: '',
         IS_USING_VENTILATOR: false,
         BRANCH_ID: ''
       });
@@ -426,7 +434,7 @@ const RescueWorkerDashboard = () => {
                 <th>ID</th>
                 <th>Patient Name</th>
                 <th>Hospital Branch</th>
-                <th>Address</th>
+                <th>Location</th>
                 <th>Using Ventilator</th>
                 <th>Call Date</th>
                 <th style={{ width: '200px' }}>Actions</th>
@@ -449,7 +457,15 @@ const RescueWorkerDashboard = () => {
                         'Not Assigned'
                       )}
                     </td>
-                    <td>{call.ADDRESS}</td>
+                    <td>
+                      {call.LOCATION}
+                      {call.CITY && (
+                        <>
+                          <br />
+                          <small className="text-muted">{call.CITY}</small>
+                        </>
+                      )}
+                    </td>
                     <td>{call.IS_USING_VENTILATOR ? 'Yes' : 'No'}</td>
                     <td>{new Date(call.CALL_DATE).toLocaleDateString()}</td>
                     <td>
@@ -577,6 +593,25 @@ const RescueWorkerDashboard = () => {
                 </Form.FloatingLabel>
               </Form.Group>
 
+              <Form.Group className="mb-3">
+                <Form.FloatingLabel label="City">
+                  <Form.Select
+                    value={formData.CITY}
+                    onChange={(e) => setFormData({
+                      ...formData,
+                      CITY: e.target.value
+                    })}
+                    required
+                  >
+                    <option value="">Select city...</option>
+                    <option value="Lahore">Lahore</option>
+                    <option value="Islamabad">Islamabad</option>
+                    <option value="Karachi">Karachi</option>
+                    <option value="Peshawar">Peshawar</option>
+                  </Form.Select>
+                </Form.FloatingLabel>
+              </Form.Group>
+
               <div className="row">
                 <div className="col-md-6">
                   <Form.Group className="mb-3">
@@ -598,6 +633,9 @@ const RescueWorkerDashboard = () => {
                     </Form.FloatingLabel>
                   </Form.Group>
                 </div>
+              </div>
+
+              <div className="row">
                 <div className="col-md-6">
                   <Form.Group className="mb-3">
                     <Form.Check

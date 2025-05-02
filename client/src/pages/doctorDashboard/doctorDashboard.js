@@ -69,19 +69,19 @@ const DoctorDashboard = () => {
           window.location.href = '/login';
           return;
         }
-
-        data[0].BOOKING_DATE = data[0].BOOKING_DATE.split('T')[0];
-        data[0].HOSPITAL_NAME = toTitleCase(data[0].HOSPITAL_NAME);
-        data[0].PATIENT_NAME = toTitleCase(data[0].PATIENT_NAME);
-        data[0].ROOM_TYPE = toTitleCase(data[0].ROOM_TYPE);
-        data[0].BOOKING_STATUS = toTitleCase(data[0].BOOKING_STATUS);
-        data[0].BOOKING_TIME = new Date(data[0].BOOKING_TIME).toLocaleTimeString('en-US', {
-          hour: '2-digit',
-          minute: '2-digit',
-          hour12: false
+        data.forEach(booking => {
+          booking.BOOKING_DATE = booking.BOOKING_DATE.split('T')[0];
+          booking.HOSPITAL_NAME = toTitleCase(booking.HOSPITAL_NAME);
+          booking.PATIENT_NAME = toTitleCase(booking.PATIENT_NAME);
+          booking.ROOM_TYPE = toTitleCase(booking.ROOM_TYPE);
+          booking.BOOKING_STATUS = toTitleCase(booking.BOOKING_STATUS);
+          booking.BOOKING_TIME = new Date(booking.BOOKING_TIME).toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false
+          });
+          booking.PHONE_NO = formatPhoneNumber(booking.PHONE_NO);
         });
-        data[0].PHONE_NO = formatPhoneNumber(data[0].PHONE_NO);
-
         setAppointments(data);
 
       } catch (error) {

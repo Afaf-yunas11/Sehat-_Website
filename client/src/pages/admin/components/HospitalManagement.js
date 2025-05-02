@@ -29,7 +29,8 @@ const HospitalManagement = () => {
     HOSPITAL_ID: '',
     HOSPITAL_NAME: '',
     branches: [{
-      LOCATION: '',
+      ADDRESS: '',
+      CITY: '',
       TOTAL_BEDS: '',
       TOTAL_VENTILATORS: '',
       LATITUDE: '',
@@ -70,12 +71,31 @@ const HospitalManagement = () => {
               branches: []
             };
           }
+
+          // Extract address and city from LOCATION if present
+          let address = '';
+          let city = '';
+          if (branch.LOCATION) {
+            const locationParts = branch.LOCATION.split(', ');
+            if (locationParts.length >= 2) {
+              // Last part is the city, everything before is the address
+              city = locationParts.pop();
+              address = locationParts.join(', ');
+            } else {
+              address = branch.LOCATION;
+            }
+          }
+
           acc[branch.HOSPITAL_ID].branches.push({
             BRANCH_ID: branch.BRANCH_ID,
-            LOCATION: branch.LOCATION,
+            LOCATION: branch.LOCATION, // Keep for display purposes
+            ADDRESS: address,
+            CITY: city,
             TOTAL_BEDS: branch.TOTAL_BEDS,
             TOTAL_VENTILATORS: branch.TOTAL_VENTILATORS,
-            PHONE_NO: branch.PHONE_NO
+            PHONE_NO: branch.PHONE_NO,
+            LATITUDE: branch.LATITUDE,
+            LONGITUDE: branch.LONGITUDE
           });
           return acc;
         }, {});
@@ -103,7 +123,8 @@ const HospitalManagement = () => {
         HOSPITAL_ID: '',
         HOSPITAL_NAME: '',
         branches: [{
-          LOCATION: '',
+          ADDRESS: '',
+          CITY: '',
           TOTAL_BEDS: '',
           TOTAL_VENTILATORS: '',
           LATITUDE: '',
@@ -122,7 +143,8 @@ const HospitalManagement = () => {
       HOSPITAL_ID: '',
       HOSPITAL_NAME: '',
       branches: [{
-        LOCATION: '',
+        ADDRESS: '',
+        CITY: '',
         TOTAL_BEDS: '',
         TOTAL_VENTILATORS: '',
         LATITUDE: '',
@@ -154,7 +176,8 @@ const HospitalManagement = () => {
                   HOSPITAL_ID: editingHospital.HOSPITAL_ID,
                   TOTAL_BEDS: parseInt(branch.TOTAL_BEDS),
                   TOTAL_VENTILATORS: parseInt(branch.TOTAL_VENTILATORS),
-                  LOCATION: branch.LOCATION,
+                  ADDRESS: branch.ADDRESS,
+                  CITY: branch.CITY,
                   LATITUDE: branch.LATITUDE ? parseFloat(branch.LATITUDE) : null,
                   LONGITUDE: branch.LONGITUDE ? parseFloat(branch.LONGITUDE) : null,
                   PHONE_NO: branch.PHONE_NO
@@ -169,7 +192,8 @@ const HospitalManagement = () => {
                   HOSPITAL_ID: editingHospital.HOSPITAL_ID,
                   TOTAL_BEDS: parseInt(branch.TOTAL_BEDS),
                   TOTAL_VENTILATORS: parseInt(branch.TOTAL_VENTILATORS),
-                  LOCATION: branch.LOCATION,
+                  ADDRESS: branch.ADDRESS,
+                  CITY: branch.CITY,
                   LATITUDE: branch.LATITUDE ? parseFloat(branch.LATITUDE) : null,
                   LONGITUDE: branch.LONGITUDE ? parseFloat(branch.LONGITUDE) : null,
                   PHONE_NO: branch.PHONE_NO
@@ -208,7 +232,8 @@ const HospitalManagement = () => {
                 HOSPITAL_ID: parseInt(formData.HOSPITAL_ID),
                 TOTAL_BEDS: parseInt(branch.TOTAL_BEDS),
                 TOTAL_VENTILATORS: parseInt(branch.TOTAL_VENTILATORS),
-                LOCATION: branch.LOCATION,
+                ADDRESS: branch.ADDRESS,
+                CITY: branch.CITY,
                 LATITUDE: branch.LATITUDE ? parseFloat(branch.LATITUDE) : null,
                 LONGITUDE: branch.LONGITUDE ? parseFloat(branch.LONGITUDE) : null,
                 PHONE_NO: branch.PHONE_NO
@@ -267,7 +292,8 @@ const HospitalManagement = () => {
       branches: [
         ...formData.branches,
         {
-          LOCATION: '',
+          ADDRESS: '',
+          CITY: '',
           TOTAL_BEDS: '',
           TOTAL_VENTILATORS: '',
           LATITUDE: '',
@@ -309,8 +335,8 @@ const HospitalManagement = () => {
     const newBranches = [...formData.branches];
     newBranches[selectedBranchIndex] = {
       ...newBranches[selectedBranchIndex],
-      LATITUDE: selectedLocation.lat.toString(),
-      LONGITUDE: selectedLocation.lng.toString()
+      LATITUDE: Number(selectedLocation.lat).toFixed(6),
+      LONGITUDE: Number(selectedLocation.lng).toFixed(6)
     };
     setFormData({
       ...formData,
@@ -336,6 +362,8 @@ const HospitalManagement = () => {
   // Function to format coordinates nicely
   const formatCoordinates = (lat, lng) => {
     if (!lat || !lng) return 'No location set';
+    lat = Number(lat);
+    lng = Number(lng);
     return `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
   };
 
@@ -485,15 +513,28 @@ const HospitalManagement = () => {
                     <div className="row">
                       <div className="col-md-6">
                         <Form.Group className="mb-3">
-                          <Form.Label>Location</Form.Label>
+                          <Form.Label>Address</Form.Label>
                           <Form.Control
                             type="text"
-                            value={branch.LOCATION || ''}
-                            onChange={(e) => handleBranchChange(index, 'LOCATION', e.target.value)}
+                            value={branch.ADDRESS || ''}
+                            onChange={(e) => handleBranchChange(index, 'ADDRESS', e.target.value)}
                             required
                           />
                         </Form.Group>
                       </div>
+                      <div className="col-md-6">
+                        <Form.Group className="mb-3">
+                          <Form.Label>City</Form.Label>
+                          <Form.Control
+                            type="text"
+                            value={branch.CITY || ''}
+                            onChange={(e) => handleBranchChange(index, 'CITY', e.target.value)}
+                            required
+                          />
+                        </Form.Group>
+                      </div>
+                    </div>
+                    <div className="row">
                       <div className="col-md-6">
                         <Form.Group className="mb-3">
                           <Form.Label>Phone Number</Form.Label>
@@ -505,8 +546,6 @@ const HospitalManagement = () => {
                           />
                         </Form.Group>
                       </div>
-                    </div>
-                    <div className="row">
                       <div className="col-md-6">
                         <Form.Group className="mb-3">
                           <Form.Label>Total Beds</Form.Label>
@@ -519,6 +558,8 @@ const HospitalManagement = () => {
                           />
                         </Form.Group>
                       </div>
+                    </div>
+                    <div className="row">
                       <div className="col-md-6">
                         <Form.Group className="mb-3">
                           <Form.Label>Total Ventilators</Form.Label>
@@ -543,7 +584,10 @@ const HospitalManagement = () => {
                           Set Location on Map
                         </Button>
                         <small className="text-muted">
-                          {formatCoordinates(branch.LATITUDE, branch.LONGITUDE)}
+                          {
+                            (isNaN(branch.LATITUDE) || isNaN(branch.LONGITUDE)) ?
+                              "NULL" :
+                              formatCoordinates(branch.LATITUDE, branch.LONGITUDE)}
                         </small>
                       </div>
                       <Button

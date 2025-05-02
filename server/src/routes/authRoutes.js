@@ -7,8 +7,9 @@ import jwt from "jsonwebtoken";
 
 import sha256 from "../scripts/sha256.js";
 import validateEmail from "../scripts/validateEmail.js";
-import { allowedTables } from "../config/userTables.js";
+import { allowedTables, userTables } from "../config/userTables.js";
 import authenticateToken from "../scripts/authenticateToken.js";
+import { userInfo } from "os";
 
 
 const router = express.Router();
@@ -21,7 +22,7 @@ const config = JSON.parse(process.env.CONFIG);
 
 router.post("/login", async (req, res) => {
   try {
-    let { loginType, email, password } = req.body;
+    let { email, password } = req.body;
 
     if (!email || !password) {
       return res.status(400).json({ error: "EMAIL AND PASSWORD REQUIRED" });
@@ -31,23 +32,28 @@ router.post("/login", async (req, res) => {
       return res.status(400).json({ error: "INVALID EMAIL FORMAT" });
     }
 
-    loginType = loginType.toUpperCase();
-    if (!allowedTables.includes(loginType)) {
-      return res.status(400).json({ error: "INVALID LOGIN TYPE" });
-    }
-
     const pool = await sql.connect(config);
-    const result = await pool
-      .request()
-      .input("email", sql.VarChar(100), email)
-      .query(
+    let result = null;
+    let loginType = null;
+
+    for (const table of Object.values(userTables)) {
+      result = await pool
+        .request()
+        .input("email", sql.VarChar(100), email)
+        .query(
+          `
+          SELECT USERS.USER_ID, EMAIL, PASSWORD, ACCOUNT_STATUS
+          FROM USERS
+          INNER JOIN ${table} ON USERS.USER_ID = ${table}.USER_ID
+          WHERE LOWER(EMAIL) = LOWER(@email);
         `
-      SELECT USERS.USER_ID, EMAIL, PASSWORD, ACCOUNT_STATUS
-      FROM USERS
-      INNER JOIN ${loginType} ON USERS.USER_ID = ${loginType}.USER_ID
-      WHERE LOWER(EMAIL) = LOWER(@email);
-      `
-      );
+        );
+
+      if (result.recordset.length > 0) {
+        loginType = table; // Optionally store the found type
+        break;
+      }
+    }
 
     if (result.recordset.length === 0) {
       return res.status(404).json({ error: "USER NOT FOUND" });
@@ -60,7 +66,7 @@ router.post("/login", async (req, res) => {
     if (hashedPassword != hashedInput) {
       return res.status(401).json({ error: "INVALID PASSWORD" });
     }
-//we setting token to our jwt key
+    //we setting token to our jwt key
     const token = jwt.sign(
       { userId: user.USER_ID, email: user.EMAIL, loginType: loginType },
       process.env.JWT_SECRET,
@@ -68,13 +74,13 @@ router.post("/login", async (req, res) => {
     );
 
     res.cookie("token", token,   //then in cookie we modifying token
-    {
-      path: "/",
-      httpOnly: true,
-      secure: false,
-      sameSite: "lax",
-      maxAge: 3600 * 1000,
-    });
+      {
+        path: "/",
+        httpOnly: true,
+        secure: false,
+        sameSite: "lax",
+        maxAge: 3600 * 1000,
+      });
 
     res.status(200).json({ message: "LOGIN SUCCESSFUL", userId: user.USER_ID, accountStatus: user.ACCOUNT_STATUS });
   } catch (error) {
@@ -88,10 +94,10 @@ router.post("/logout", authenticateToken, (req, res) => {
 });
 
 router.get("/current-user", authenticateToken, async (req, res) => {
-  if(req.user){
-    res.status(200).json({userId: req.user.userId, loginType: req.user.loginType});
+  if (req.user) {
+    res.status(200).json({ userId: req.user.userId, loginType: req.user.loginType });
   }
-  else{
+  else {
     res.status(401).json({ error: "UNAUTHORIZED" });
   }
 })

@@ -65,21 +65,6 @@ const LoginForm = () => {
         <h1 className={styles.loginPageTitle}>Trusted Care.<br /> Anytime. Anywhere.</h1>
         <p className={styles.subtitle}>Log in to your Sehat account</p>
         <hr className={styles.divider} />
-        <p className={styles.subtitle}>I am a...</p>
-        <select
-          className={styles.roleDropdown}
-          value={role}
-          onChange={(e) => {
-            setRole(e.target.value);
-            setAlertMessage(''); // Clear alert message when role changes
-          }}
-        >
-          <option value="user">User</option>
-          <option value="doctor">Doctor</option>
-          <option value="admin">Admin</option>
-          <option value="rescue-worker">Rescue Worker</option>
-        </select>
-        <hr className={styles.divider} />
 
         {alertMessage && <Alert message={alertMessage} />}
 
