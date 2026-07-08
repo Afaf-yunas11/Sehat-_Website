@@ -72,3 +72,8 @@ Contributions are welcome! Follow these steps to contribute:
 ## License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+
+## Documentation  and Learning 
+
+https://docs.google.com/document/d/1TURPZNNRfs8wn20uPrYnMfT9chV6JJoYqzq58O0aiL4/edit?tab=t.k9l0p8pxlk66
+(Afaf Yunas)
